@@ -11,7 +11,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
-type FileBatch = Vec<(String, String, Option<String>, i64, u64, i64)>;
+type FileBatch = Vec<(String, String, Option<String>, Option<String>, i64, u64, i64)>;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct IndexProgress {
@@ -140,6 +140,7 @@ impl Scheduler {
                 metadata.path.clone(),
                 metadata.name.clone(),
                 metadata.ext.clone(),
+                metadata.kind.clone(),
                 metadata.mtime,
                 metadata.size,
                 chrono::Utc::now().timestamp(),
@@ -210,17 +211,17 @@ impl Scheduler {
         {
             let mut stmt = tx.prepare_cached(
                 "INSERT OR REPLACE INTO files (path, name, ext, size, mtime, hash, kind, indexed_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, NULL, NULL, ?6)",
+                 VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7)",
             )?;
-            for (path, name, ext, mtime, size, indexed_at) in batch {
+            for (path, name, ext, kind, mtime, size, indexed_at) in batch {
                 let size_i64 = i64::try_from(*size).unwrap_or(i64::MAX);
-                stmt.execute(params![path, name, ext, size_i64, mtime, indexed_at])?;
+                stmt.execute(params![path, name, ext, size_i64, mtime, kind, indexed_at])?;
             }
             let mut fts_stmt = tx.prepare_cached(
                 "INSERT OR REPLACE INTO files_fts (rowid, name, content)
                  SELECT id, name, '' FROM files WHERE path = ?1",
             )?;
-            for (path, _, _, _, _, _) in batch {
+            for (path, _, _, _, _, _, _) in batch {
                 fts_stmt.execute(params![path])?;
             }
         }
@@ -260,12 +261,28 @@ impl Scheduler {
             |r| r.get(0),
         )?;
 
-        if let Some(text) = content {
+        if let Some(text) = content.clone() {
             tx.execute("DELETE FROM files_fts WHERE rowid = ?1", params![file_id])?;
             tx.execute(
                 "INSERT INTO files_fts (rowid, name, content) VALUES (?1, ?2, ?3)",
                 params![file_id, meta.name, text],
             )?;
+
+            tx.execute("DELETE FROM chunks WHERE file_id = ?1", params![file_id])?;
+            let chunks = super::chunk_file(&path, meta.kind.as_deref(), &text)?;
+            let mut chunk_stmt = tx.prepare(
+                "INSERT INTO chunks (file_id, content, page, position, token_count, embedding_status)
+                 VALUES (?1, ?2, ?3, ?4, ?5, 'pending')",
+            )?;
+            for c in chunks {
+                chunk_stmt.execute(params![
+                    file_id,
+                    c.content,
+                    c.page,
+                    c.position,
+                    c.token_count,
+                ])?;
+            }
         }
         tx.commit()?;
         Ok(())

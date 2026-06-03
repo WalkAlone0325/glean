@@ -106,8 +106,23 @@ pub fn migrations() -> Migrations<'static> {
             CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(
                 name,
                 content,
-                tokenize = 'unicode61 remove_diacritics 2 categories L* M* C*'
+                tokenize = 'unicode61 remove_diacritics 2'
             );
+            "#,
+        ),
+        M::up(
+            r#"
+            ALTER TABLE chunks ADD COLUMN embedding_status TEXT NOT NULL DEFAULT 'pending';
+            ALTER TABLE chunks ADD COLUMN token_count INTEGER;
+            CREATE INDEX IF NOT EXISTS idx_chunks_status ON chunks(embedding_status);
+
+            CREATE TABLE IF NOT EXISTS embedding_jobs (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                chunk_id    INTEGER NOT NULL UNIQUE,
+                created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+                FOREIGN KEY (chunk_id) REFERENCES chunks(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_embedding_jobs ON embedding_jobs(chunk_id);
             "#,
         ),
     ])

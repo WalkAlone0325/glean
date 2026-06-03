@@ -8,6 +8,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 
 mod commands;
 mod db;
+mod embedding;
 mod scanner;
 mod search;
 
@@ -22,6 +23,7 @@ pub fn run() {
             init_db(handle)?;
             init_global_shortcut(handle)?;
             init_watcher(handle)?;
+            init_embedding_worker(handle)?;
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
@@ -37,11 +39,15 @@ pub fn run() {
             commands::greet,
             commands::get_stats,
             commands::get_indexed_roots,
+            commands::list_files,
+            commands::read_text_preview,
             commands::start_indexing,
             commands::cancel_indexing,
             commands::is_indexing,
             commands::search_files,
+            commands::hybrid_search_files,
             commands::open_file,
+            commands::reveal_in_finder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -197,5 +203,16 @@ fn init_global_shortcut(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error
             }
         })?;
     tracing::info!("global shortcut registered: Cmd+Shift+Space");
+    Ok(())
+}
+
+fn init_embedding_worker(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let db = app
+        .state::<std::sync::Arc<tokio::sync::Mutex<db::Database>>>()
+        .inner()
+        .clone();
+    let worker = embedding::worker::spawn_worker(db, app.clone());
+    app.manage(worker);
+    tracing::info!("embedding worker spawned");
     Ok(())
 }

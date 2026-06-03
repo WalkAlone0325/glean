@@ -8,12 +8,25 @@ export interface Stats {
   tags: number;
 }
 
+export interface EmbedProgress {
+  embedded: number;
+  total: number;
+  current_chunk: number | null;
+  phase: "Idle" | "Downloading" | "Embedding" | "Completed" | "Failed";
+}
+
 export const useAppStore = defineStore(
   "app",
   () => {
     const stats = ref<Stats>({ files: 0, chunks: 0, tags: 0 });
     const indexedFolders = ref<string[]>([]);
     const ready = ref(false);
+    const embedding = ref<EmbedProgress>({
+      embedded: 0,
+      total: 0,
+      current_chunk: null,
+      phase: "Idle",
+    });
 
     async function bootstrap() {
       try {
@@ -42,7 +55,11 @@ export const useAppStore = defineStore(
       }
     }
 
-    return { stats, indexedFolders, ready, bootstrap, refreshStats };
+    function updateEmbedding(p: EmbedProgress) {
+      embedding.value = p;
+    }
+
+    return { stats, indexedFolders, ready, embedding, bootstrap, refreshStats, updateEmbedding };
   },
   { persist: { pick: ["indexedFolders"] } },
 );

@@ -30,7 +30,20 @@ watch(
   async (idx) => {
     await nextTick();
     const el = itemRefs.value?.[idx];
-    if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (!el) return;
+    const container = el.closest(".search-scroll-container") as HTMLElement | null;
+    if (!container) {
+      el.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    const cRect = container.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    const margin = 8;
+    if (eRect.top < cRect.top + margin) {
+      container.scrollTop -= cRect.top + margin - eRect.top;
+    } else if (eRect.bottom > cRect.bottom - margin) {
+      container.scrollTop += eRect.bottom - (cRect.bottom - margin);
+    }
   },
 );
 
@@ -64,10 +77,25 @@ function onKeydown(e: KeyboardEvent) {
   } else if (e.key === "Enter") {
     e.preventDefault();
     store.openCurrent().then(() => (store.paletteOpen = false));
+  } else if (e.key === "Tab") {
+    e.preventDefault();
+    store.toggleMode();
   }
 }
 
 const showPanel = computed(() => store.paletteOpen);
+
+function sourceBadge(source: "Both" | "VectorOnly" | "FtsOnly") {
+  if (source === "Both") return { text: "语义+关键词", cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" };
+  if (source === "VectorOnly") return { text: "语义", cls: "bg-purple-500/15 text-purple-600 dark:text-purple-400" };
+  return { text: "关键词", cls: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" };
+}
+
+const modeLabel = computed(() => {
+  if (store.mode === "keyword") return "关键词";
+  if (store.mode === "semantic") return "语义";
+  return "自动";
+});
 </script>
 
 <template>
@@ -94,7 +122,7 @@ const showPanel = computed(() => store.paletteOpen);
           <kbd class="text-xs text-muted-foreground">ESC</kbd>
         </div>
 
-        <div class="flex-1 overflow-auto">
+        <div class="search-scroll-container flex-1 overflow-auto">
           <div v-if="store.error" class="px-4 py-6 text-sm text-red-500">
             {{ store.error }}
           </div>
@@ -110,15 +138,26 @@ const showPanel = computed(() => store.paletteOpen);
               :key="item.id"
               ref="itemRefs"
               @click="store.openAt(idx).then(() => (store.paletteOpen = false))"
-              @mouseenter="store.selectedIndex = idx"
+              @mouseenter="store.setHover(idx)"
+              @mouseleave="store.setHover(null)"
               :class="[
                 'flex cursor-pointer items-start gap-3 px-4 py-3',
-                idx === store.selectedIndex ? 'bg-muted' : '',
+                idx === store.hoverIndex || (store.hoverIndex === null && idx === store.selectedIndex)
+                  ? 'bg-muted'
+                  : '',
               ]"
             >
               <component :is="kindIcon(item.kind)" class="mt-0.5 size-5 shrink-0 text-muted-foreground" />
               <div class="min-w-0 flex-1">
-                <div class="truncate text-sm font-medium">{{ item.name }}</div>
+                <div class="flex items-center gap-2">
+                  <span class="truncate text-sm font-medium">{{ item.name }}</span>
+                  <span
+                    v-if="'source' in item"
+                    :class="['rounded px-1.5 py-0.5 text-[10px] font-medium', sourceBadge(item.source).cls]"
+                  >
+                    {{ sourceBadge(item.source).text }}
+                  </span>
+                </div>
                 <div class="truncate text-xs text-muted-foreground">{{ item.path }}</div>
                 <div
                   v-if="item.snippet"
@@ -138,8 +177,19 @@ const showPanel = computed(() => store.paletteOpen);
         </div>
 
         <div class="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">
-          <span>{{ store.hasResults ? `${store.results.length} 个结果` : "FTS + jieba-rs" }}</span>
           <div class="flex items-center gap-3">
+            <button
+              @click="store.toggleMode()"
+              class="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted"
+              :title="`当前: ${modeLabel}（Tab 切换）`"
+            >
+              <span class="font-medium text-foreground">{{ modeLabel }}</span>
+              <span v-if="store.mode === 'auto'" class="text-[10px]">→ {{ store.effectiveMode === "semantic" ? "语义" : "关键词" }}</span>
+            </button>
+            <span v-if="store.hasResults">{{ store.results.length }} 个结果</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span><kbd class="font-mono">Tab</kbd> 模式</span>
             <span><kbd class="font-mono">↑↓</kbd> 选择</span>
             <span><kbd class="font-mono">⏎</kbd> 打开</span>
           </div>

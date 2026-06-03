@@ -1,3 +1,6 @@
+pub mod hybrid;
+pub mod vector;
+
 use anyhow::Result;
 use jieba_rs::Jieba;
 use rusqlite::Connection;

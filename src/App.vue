@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { Search, Folder, FileText, Settings, Loader2, FolderOpen } from "@lucide/vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { useAppStore } from "./stores/app";
+import { useAppStore, type EmbedProgress } from "./stores/app";
 import { useSearchStore } from "./stores/search";
+import { useFilesStore } from "./stores/files";
 import SearchPalette from "./components/SearchPalette.vue";
+import FileList from "./components/FileList.vue";
+import DetailPanel from "./components/DetailPanel.vue";
+import ToastHost from "./components/ToastHost.vue";
 
 const app = useAppStore();
 const search = useSearchStore();
+const files = useFilesStore();
 const indexing = ref(false);
+const showKindMenu = ref(false);
 
 async function pickAndIndex() {
   const selected = await openDialog({ directory: true, multiple: false });
@@ -26,17 +32,56 @@ async function pickAndIndex() {
   }
 }
 
+const embeddingPct = computed(() => {
+  const p = app.embedding;
+  if (p.total === 0) return 0;
+  return Math.min(100, Math.round((p.embedded / p.total) * 100));
+});
+
+const kindOptions: { value: string | null; label: string }[] = [
+  { value: null, label: "全部" },
+  { value: "pdf", label: "PDF" },
+  { value: "markdown", label: "Markdown" },
+  { value: "text", label: "文本" },
+  { value: "code", label: "代码" },
+  { value: "image", label: "图片" },
+  { value: "document", label: "文档" },
+  { value: "spreadsheet", label: "表格" },
+  { value: "archive", label: "压缩包" },
+];
+
+const currentKindLabel = computed(() => {
+  return kindOptions.find((o) => o.value === files.kindFilter)?.label || "全部";
+});
+
 onMounted(async () => {
   await app.bootstrap();
+  if (app.indexedFolders.length > 0) {
+    await files.reload();
+  }
   await listen<{ total: number; duration_ms: number }>("index-complete", async () => {
     indexing.value = false;
     await app.refreshStats();
+    await files.reload();
   });
   await listen<{ current: number; total: number; phase: string }>("index-progress", (e) => {
     if (e.payload.phase === "Indexing") indexing.value = true;
     if (e.payload.phase === "Completed" || e.payload.phase === "Cancelled") indexing.value = false;
   });
+  await listen<EmbedProgress>("embedding-progress", (e) => {
+    app.updateEmbedding(e.payload);
+    if (e.payload.phase === "Completed") {
+      app.refreshStats();
+    }
+  });
 });
+
+watch(
+  () => app.stats.files,
+  async (n, old) => {
+    if (n !== old && n > 0) await files.reload();
+  },
+);
 </script>
 
 <template>
@@ -89,10 +134,10 @@ onMounted(async () => {
         </div>
       </aside>
 
-      <main class="flex-1 overflow-auto p-6">
+      <main class="flex flex-1 flex-col overflow-hidden">
         <div
           v-if="!app.indexedFolders?.length"
-          class="flex h-full flex-col items-center justify-center text-muted-foreground"
+          class="flex flex-1 flex-col items-center justify-center text-muted-foreground"
         >
           <p class="text-sm">还没有索引任何文件夹</p>
           <button
@@ -104,33 +149,93 @@ onMounted(async () => {
             选择文件夹开始索引
           </button>
         </div>
-        <div v-else class="flex h-full flex-col">
-          <div class="mb-4 flex items-center justify-between">
-            <div>
-              <h2 class="text-base font-semibold">已索引 {{ app.stats.files }} 个文件</h2>
-              <p class="text-xs text-muted-foreground">FTS + jieba-rs 中文分词已启用</p>
+        <template v-else>
+          <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div class="flex items-center gap-3">
+              <h2 class="text-sm font-semibold">{{ app.stats.files }} 个文件</h2>
+              <div class="relative">
+                <button
+                  @click="showKindMenu = !showKindMenu"
+                  class="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-muted/80"
+                >
+                  <Filter class="size-3" />
+                  {{ currentKindLabel }}
+                </button>
+                <div
+                  v-if="showKindMenu"
+                  @mouseleave="showKindMenu = false"
+                  class="absolute left-0 top-full z-10 mt-1 w-32 rounded-md border border-border bg-background py-1 shadow-lg"
+                >
+                  <button
+                    v-for="opt in kindOptions"
+                    :key="String(opt.value)"
+                    @click="files.setKindFilter(opt.value); showKindMenu = false"
+                    :class="[
+                      'block w-full px-3 py-1 text-left text-xs hover:bg-muted',
+                      files.kindFilter === opt.value ? 'font-medium text-foreground' : '',
+                    ]"
+                  >
+                    {{ opt.label }}
+                  </button>
+                </div>
+              </div>
             </div>
-            <button
-              @click="pickAndIndex"
-              :disabled="indexing"
-              class="flex items-center gap-2 rounded-md bg-muted px-3 py-1.5 text-xs transition hover:bg-muted/80 disabled:opacity-50"
-            >
-              <Loader2 v-if="indexing" class="size-3 animate-spin" />
-              <FolderOpen v-else class="size-3.5" />
-              {{ indexing ? "索引中..." : "添加文件夹" }}
-            </button>
+            <div class="flex items-center gap-2">
+              <div
+                v-if="app.embedding.phase === 'Downloading'"
+                class="flex items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-1 text-[11px] text-blue-600 dark:text-blue-400"
+                title="首次使用需下载 BGE-small 模型 (~130MB)"
+              >
+                <Loader2 class="size-3 animate-spin" />
+                下载模型
+              </div>
+              <div
+                v-else-if="app.embedding.phase === 'Embedding'"
+                class="flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-[11px] text-primary"
+                :title="`已向量化 ${app.embedding.embedded} / ${app.embedding.total} chunk`"
+              >
+                <Sparkles class="size-3 animate-pulse" />
+                向量化 {{ embeddingPct }}%
+              </div>
+              <div
+                v-else-if="app.embedding.phase === 'Completed'"
+                class="flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-600 dark:text-emerald-400"
+                :title="`共 ${app.stats.chunks} chunks 已向量化`"
+              >
+                <Sparkles class="size-3" />
+                向量就绪
+              </div>
+              <div
+                v-else-if="app.embedding.phase === 'Failed'"
+                class="flex items-center gap-1.5 rounded-md bg-red-500/10 px-2 py-1 text-[11px] text-red-600 dark:text-red-400"
+                title="向量化失败，请查看日志"
+              >
+                <Sparkles class="size-3" />
+                向量化失败
+              </div>
+              <button
+                @click="pickAndIndex"
+                :disabled="indexing"
+                class="flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs transition hover:bg-muted/80 disabled:opacity-50"
+              >
+                <Loader2 v-if="indexing" class="size-3 animate-spin" />
+                <FolderOpen v-else class="size-3" />
+                {{ indexing ? "索引中" : "添加" }}
+              </button>
+            </div>
           </div>
-          <div class="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-            按 <kbd class="mx-1 rounded bg-muted px-1 text-xs">⌘K</kbd> 开始搜索
-          </div>
-        </div>
-      </main>
 
-      <aside class="w-72 border-l border-border p-4">
-        <p class="text-xs text-muted-foreground">详情面板</p>
-      </aside>
+          <div class="flex flex-1 overflow-hidden">
+            <div class="flex-1 overflow-hidden">
+              <FileList />
+            </div>
+            <DetailPanel />
+          </div>
+        </template>
+      </main>
     </div>
 
     <SearchPalette />
+    <ToastHost />
   </div>
 </template>
