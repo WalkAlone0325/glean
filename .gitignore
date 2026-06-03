@@ -54,3 +54,7 @@ models/
 .env
 .env.local
 .env.*.local
+
+# Private notes & plans (not for public repo)
+notes/
+.private/
