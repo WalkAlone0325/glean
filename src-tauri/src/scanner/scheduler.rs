@@ -11,7 +11,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
-type FileBatch = Vec<(String, String, Option<String>, Option<String>, i64, u64, i64)>;
+type FileBatch = Vec<(String, String, Option<String>, Option<String>, i64, u64, i64, Option<String>)>;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct IndexProgress {
@@ -154,6 +154,20 @@ impl Scheduler {
                 None
             };
 
+            let is_screenshot = is_screenshot(path, metadata.kind.as_deref());
+            let content = if is_screenshot {
+                match super::run_ocr_with_timeout(path).await {
+                    Ok(r) if !r.text.trim().is_empty() => Some(r.text),
+                    Ok(_) => None,
+                    Err(e) => {
+                        tracing::warn!("ocr failed for {}: {}", path.display(), e);
+                        None
+                    }
+                }
+            } else {
+                super::extract_text(path, &metadata.ext).await
+            };
+
             batch.push((
                 metadata.path.clone(),
                 metadata.name.clone(),
@@ -162,6 +176,7 @@ impl Scheduler {
                 metadata.mtime,
                 metadata.size,
                 chrono::Utc::now().timestamp(),
+                content,
             ));
 
             count += 1;
@@ -231,16 +246,34 @@ impl Scheduler {
                 "INSERT OR REPLACE INTO files (path, name, ext, size, mtime, hash, kind, indexed_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7)",
             )?;
-            for (path, name, ext, kind, mtime, size, indexed_at) in batch {
+            for (path, name, ext, kind, mtime, size, _indexed_at, _content) in batch {
                 let size_i64 = i64::try_from(*size).unwrap_or(i64::MAX);
-                stmt.execute(params![path, name, ext, size_i64, mtime, kind, indexed_at])?;
+                stmt.execute(params![path, name, ext, size_i64, mtime, kind, 0])?;
             }
             let mut fts_stmt = tx.prepare_cached(
                 "INSERT OR REPLACE INTO files_fts (rowid, name, content)
-                 SELECT id, name, '' FROM files WHERE path = ?1",
+                 SELECT id, ?2, ?3 FROM files WHERE path = ?1",
             )?;
-            for (path, _, _, _, _, _, _) in batch {
-                fts_stmt.execute(params![path])?;
+            for (path, name, _ext, _kind, _mtime, _size, _indexed_at, content) in batch {
+                let c = content.as_deref().unwrap_or("");
+                fts_stmt.execute(params![path, name, c])?;
+            }
+            let mut chunk_stmt = tx.prepare_cached(
+                "DELETE FROM chunks WHERE file_id = (SELECT id FROM files WHERE path = ?1)",
+            )?;
+            for (path, _, _, _, _, _, _, _) in batch {
+                chunk_stmt.execute(params![path])?;
+            }
+            let mut ins_chunk = tx.prepare_cached(
+                "INSERT INTO chunks (file_id, content, page, position, token_count, embedding_status)
+                 SELECT id, ?2, NULL, 0, NULL, 'pending' FROM files WHERE path = ?1",
+            )?;
+            for (path, _name, _ext, _kind, _mtime, _size, _indexed_at, content) in batch {
+                if let Some(c) = content {
+                    if !c.trim().is_empty() {
+                        ins_chunk.execute(params![path, c])?;
+                    }
+                }
             }
         }
         tx.commit()?;
@@ -259,7 +292,19 @@ impl Scheduler {
             None
         };
 
-        let content = super::extract_text(&path, &meta.ext).await;
+        let is_screenshot = is_screenshot(&path, meta.kind.as_deref());
+        let content = if is_screenshot {
+            match super::run_ocr_with_timeout(&path).await {
+                Ok(r) if !r.text.trim().is_empty() => Some(r.text),
+                Ok(_) => None,
+                Err(e) => {
+                    tracing::warn!("ocr failed for {}: {}", path.display(), e);
+                    None
+                }
+            }
+        } else {
+            super::extract_text(&path, &meta.ext).await
+        };
         let size_i64 = i64::try_from(meta.size).unwrap_or(i64::MAX);
 
         let db = self.db.lock().await;
@@ -324,5 +369,22 @@ impl Drop for CancelGuard {
     fn drop(&mut self) {
         self.0.store(false, Ordering::SeqCst);
     }
+}
+
+fn is_screenshot(path: &std::path::Path, kind: Option<&str>) -> bool {
+    if kind != Some("image") {
+        return false;
+    }
+    let path_str = path.to_string_lossy().to_lowercase();
+    let name = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|s| s.to_lowercase())
+        .unwrap_or_default();
+    name.contains("screenshot")
+        || name.contains("screenshot")
+        || name.contains("截屏")
+        || name.starts_with("img_")
+        || path_str.contains("/screenshots/")
 }
 

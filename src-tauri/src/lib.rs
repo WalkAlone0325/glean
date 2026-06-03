@@ -9,6 +9,8 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 mod commands;
 mod db;
 mod embedding;
+mod llm;
+mod rag;
 mod scanner;
 mod search;
 
@@ -52,6 +54,15 @@ pub fn run() {
             commands::hybrid_search_files,
             commands::open_file,
             commands::reveal_in_finder,
+            commands::get_setting,
+            commands::set_setting,
+            commands::get_provider_config,
+            commands::test_llm,
+            commands::chat_send,
+            commands::list_messages,
+            commands::list_conversations,
+            commands::delete_conversation,
+            commands::rename_conversation,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -88,13 +99,17 @@ fn init_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
-    let icon = app
-        .default_window_icon()
-        .cloned()
-        .ok_or("missing default window icon")?;
+    let icon: tauri::image::Image = match tauri::image::Image::from_path("icons/tray-icon.png") {
+        Ok(img) => img,
+        Err(_) => app
+            .default_window_icon()
+            .cloned()
+            .ok_or::<Box<dyn std::error::Error>>("missing default window icon".into())?,
+    };
 
     TrayIconBuilder::new()
         .icon(icon)
+        .icon_as_template(true)
         .menu(&menu)
         .tooltip("Glean")
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -213,6 +228,7 @@ fn init_watcher(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>
         home.join("Desktop"),
         home.join("Documents"),
         home.join("Downloads"),
+        home.join("Pictures").join("Screenshots"),
     ];
     let roots = defaults
         .into_iter()

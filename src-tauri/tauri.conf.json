@@ -13,10 +13,10 @@
     "windows": [
       {
         "title": "Glean",
-        "width": 1280,
-        "height": 800,
-        "minWidth": 900,
-        "minHeight": 600,
+        "width": 1100,
+        "height": 820,
+        "minWidth": 820,
+        "minHeight": 520,
         "decorations": true,
         "resizable": true,
         "fullscreen": false,

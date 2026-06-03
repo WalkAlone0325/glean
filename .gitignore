@@ -58,3 +58,5 @@ models/
 # Private notes & plans (not for public repo)
 notes/
 .private/
+.fastembed_cache/
+src-tauri/bin/glean-ocr

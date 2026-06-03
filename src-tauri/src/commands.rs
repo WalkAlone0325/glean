@@ -1,4 +1,5 @@
 use crate::db::Database;
+use crate::llm::{openai::OpenAIProvider, ChatRequest, LLMProvider, ProviderConfig};
 use crate::scanner::Scheduler;
 use crate::search::hybrid::{hybrid_search, HybridResult};
 use crate::search::{SearchFilter, SearchResult, Searcher};
@@ -330,6 +331,218 @@ pub fn read_text_preview(
     let n = file.read(&mut buf).map_err(|e| e.to_string())?;
     buf.truncate(n);
     Ok(String::from_utf8_lossy(&buf).into_owned())
+}
+
+#[tauri::command]
+pub fn get_setting(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    key: String,
+) -> Result<Option<String>, String> {
+    let db = db.blocking_lock();
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT value FROM settings WHERE key = ?1")
+        .map_err(|e| e.to_string())?;
+    let mut rows = stmt
+        .query_map(rusqlite::params![&key], |r| r.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+    if let Some(r) = rows.next() {
+        Ok(Some(r.map_err(|e| e.to_string())?))
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+pub fn set_setting(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    key: String,
+    value: String,
+) -> Result<(), String> {
+    let db = db.blocking_lock();
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?1, ?2, strftime('%s','now'))",
+        rusqlite::params![&key, &value],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_provider_config(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+) -> Result<ProviderConfig, String> {
+    let db = db.blocking_lock();
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    let get = |k: &str| -> Option<String> {
+        conn.query_row(
+            "SELECT value FROM settings WHERE key = ?1",
+            rusqlite::params![k],
+            |r| r.get::<_, String>(0),
+        )
+        .ok()
+    };
+    Ok(ProviderConfig {
+        provider: get("llm.provider").unwrap_or_else(|| "openai".to_string()),
+        base_url: get("llm.base_url").unwrap_or_else(|| "https://api.openai.com/v1".to_string()),
+        api_key: get("llm.api_key").unwrap_or_default(),
+        model: get("llm.model").unwrap_or_else(|| "gpt-4o-mini".to_string()),
+    })
+}
+
+#[tauri::command]
+pub async fn chat_send(
+    app: AppHandle,
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    conversation_id: Option<i64>,
+    message: String,
+    use_rag: Option<bool>,
+) -> Result<ChatStartResult, String> {
+    let db = db.inner().clone();
+    let use_rag = use_rag.unwrap_or(true);
+    let (conv_id, msg_id, rag) =
+        crate::rag::run_chat(app, db, conversation_id, message, use_rag)
+            .await
+            .map_err(|e| e.to_string())?;
+    Ok(ChatStartResult {
+        conversation_id: conv_id,
+        message_id: msg_id,
+        rag_context: rag,
+    })
+}
+
+#[derive(serde::Serialize)]
+pub struct ChatStartResult {
+    pub conversation_id: i64,
+    pub message_id: i64,
+    pub rag_context: Option<crate::rag::RagContext>,
+}
+
+#[tauri::command]
+pub async fn list_messages(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    conversation_id: i64,
+) -> Result<Vec<crate::llm::Message>, String> {
+    let db = db.inner().clone();
+    crate::rag::load_history(&db, conversation_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_conversations(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+) -> Result<Vec<ConversationSummary>, String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, COALESCE(NULLIF(title, ''), '新对话'), created_at, updated_at FROM conversations ORDER BY updated_at DESC LIMIT 100",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(ConversationSummary {
+                id: r.get(0)?,
+                title: r.get::<_, String>(1)?,
+                created_at: r.get::<_, i64>(2).unwrap_or(0),
+                updated_at: r.get::<_, i64>(3).unwrap_or(0),
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+pub async fn delete_conversation(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    conversation_id: i64,
+) -> Result<(), String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM messages WHERE conversation_id = ?1",
+        rusqlite::params![conversation_id],
+    )
+    .map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM conversations WHERE id = ?1",
+        rusqlite::params![conversation_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn rename_conversation(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    conversation_id: i64,
+    title: String,
+) -> Result<(), String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE conversations SET title = ?1, updated_at = strftime('%s','now') WHERE id = ?2",
+        rusqlite::params![title, conversation_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[derive(serde::Serialize)]
+pub struct ConversationSummary {
+    pub id: i64,
+    pub title: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[tauri::command]
+pub async fn test_llm(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+) -> Result<String, String> {
+    let cfg = {
+        let db_lock = db.lock().await;
+        let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+        let get = |k: &str| -> Option<String> {
+            conn.query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                rusqlite::params![k],
+                |r| r.get::<_, String>(0),
+            )
+            .ok()
+        };
+        ProviderConfig {
+            provider: get("llm.provider").unwrap_or_else(|| "openai".to_string()),
+            base_url: get("llm.base_url").unwrap_or_else(|| "https://api.openai.com/v1".to_string()),
+            api_key: get("llm.api_key").unwrap_or_default(),
+            model: get("llm.model").unwrap_or_else(|| "gpt-4o-mini".to_string()),
+        }
+    };
+
+    if cfg.api_key.is_empty() {
+        return Err("请先填入 API Key".to_string());
+    }
+
+    let provider = OpenAIProvider::new(&cfg.base_url, &cfg.api_key, &cfg.model);
+    let resp = provider
+        .chat(ChatRequest {
+            messages: vec![crate::llm::Message {
+                role: "user".to_string(),
+                content: "回复\"OK\"两个字符".to_string(),
+            }],
+            model: None,
+            temperature: Some(0.0),
+            max_tokens: Some(10),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(resp.content)
 }
 
 #[derive(serde::Serialize)]

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play } from "@lucide/vue";
+import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play, MessageSquare } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
@@ -11,13 +11,18 @@ import SearchPalette from "./components/SearchPalette.vue";
 import FileList from "./components/FileList.vue";
 import DetailPanel from "./components/DetailPanel.vue";
 import ToastHost from "./components/ToastHost.vue";
+import SettingsModal from "./components/SettingsModal.vue";
+import ChatPanel from "./components/ChatPanel.vue";
+import { useChatStore } from "./stores/chat";
 
 const app = useAppStore();
 const search = useSearchStore();
 const files = useFilesStore();
+const chat = useChatStore();
 const indexing = ref(false);
 const paused = ref(false);
 const showKindMenu = ref(false);
+const showSettings = ref(false);
 
 async function togglePause() {
   if (paused.value) {
@@ -107,7 +112,19 @@ watch(
         <span class="flex-1">搜索文件、内容、命令...</span>
         <kbd class="text-xs">⌘K</kbd>
       </button>
-      <button class="rounded-md p-1.5 text-muted-foreground hover:bg-muted" aria-label="设置">
+      <button
+        @click="chat.togglePanel()"
+        class="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+        aria-label="AI 助手"
+        title="AI 助手"
+      >
+        <MessageSquare class="size-4" />
+      </button>
+      <button
+        @click="showSettings = true"
+        class="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+        aria-label="设置"
+      >
         <Settings class="size-4" />
       </button>
     </header>
@@ -213,11 +230,26 @@ watch(
               </button>
               <div
                 v-if="app.embedding.phase === 'Downloading'"
-                class="flex items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-1 text-[11px] text-blue-600 dark:text-blue-400"
-                title="首次使用需下载 BGE-small 模型 (~130MB)"
+                class="group relative flex items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-1 text-[11px] text-blue-600 dark:text-blue-400"
               >
                 <Loader2 class="size-3 animate-spin" />
                 下载模型
+                <div
+                  class="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden w-64 rounded-md border border-border bg-background p-3 text-xs text-foreground shadow-lg group-hover:block"
+                >
+                  <div class="mb-2 font-medium">下载 Embedding 模型</div>
+                  <div class="mb-2 text-muted-foreground">
+                    BAAI/bge-small-en-v1.5（约 130MB），从 HuggingFace 下载到本地缓存。
+                  </div>
+                  <div class="mb-2 h-1 w-full overflow-hidden rounded-full bg-muted">
+                    <div class="h-full w-1/3 animate-[indeterminate_1.2s_ease-in-out_infinite] rounded-full bg-blue-500"></div>
+                  </div>
+                  <div class="text-[10px] text-muted-foreground">
+                    用途：把文本转成向量，支持"按语义搜索"<br />
+                    位置：<code class="break-all">~/.cache/huggingface/hub/</code><br />
+                    只在首次启动下载一次
+                  </div>
+                </div>
               </div>
               <div
                 v-else-if="app.embedding.phase === 'Embedding'"
@@ -259,6 +291,7 @@ watch(
               <FileList />
             </div>
             <DetailPanel />
+            <ChatPanel />
           </div>
         </template>
       </main>
@@ -266,5 +299,6 @@ watch(
 
     <SearchPalette />
     <ToastHost />
+    <SettingsModal v-if="showSettings" @close="showSettings = false" />
   </div>
 </template>

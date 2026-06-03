@@ -15,10 +15,23 @@ impl EmbeddingService {
         if EMBEDDER.get().is_some() {
             return Ok(());
         }
-        let model = TextEmbedding::try_new(
-            InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
-        )?;
+
+        let endpoint = std::env::var("GLEAN_HF_ENDPOINT")
+            .unwrap_or_else(|_| "https://hf-mirror.com".to_string());
+        std::env::set_var("HF_ENDPOINT", &endpoint);
+        tracing::info!("using huggingface endpoint: {}", endpoint);
+
+        let cache_dir = std::env::var("GLEAN_CACHE_DIR").ok().filter(|s| !s.is_empty());
+
+        let mut opts = InitOptions::new(EmbeddingModel::BGESmallENV15)
+            .with_show_download_progress(true);
+        if let Some(dir) = cache_dir.clone() {
+            opts = opts.with_cache_dir(std::path::PathBuf::from(dir));
+        }
+
+        let model = TextEmbedding::try_new(opts)?;
         let _ = EMBEDDER.set(Mutex::new(model));
+        tracing::info!("embedding model loaded (cache: {:?})", cache_dir);
         Ok(())
     }
 
