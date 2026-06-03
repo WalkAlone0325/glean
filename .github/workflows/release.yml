@@ -4,12 +4,11 @@ on:
   push:
     tags:
       - 'v*'
-
-workflow_dispatch:
-  inputs:
-    tag:
-      description: 'Tag name (e.g. v0.1.0)'
-      required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name (e.g. v0.1.0)'
+        required: true
 
 jobs:
   publish-tauri:
