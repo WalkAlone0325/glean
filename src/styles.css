@@ -8,8 +8,8 @@
   --color-border: hsl(240 5.9% 90%);
   --color-primary: hsl(240 5.9% 10%);
   --color-primary-foreground: hsl(0 0% 98%);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "PingFang SC",
-    "Helvetica Neue", Arial, sans-serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Inter", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
