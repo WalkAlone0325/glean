@@ -13,7 +13,6 @@
     "window-state:default",
     "clipboard-manager:default",
     "updater:default",
-    "log:default",
     "shell:default"
   ]
 }
