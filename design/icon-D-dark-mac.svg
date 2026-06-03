@@ -14,21 +14,22 @@
       <stop offset="1" stop-color="#7DD3FC"/>
     </linearGradient>
   </defs>
-  <rect width="1024" height="1024" rx="228" ry="228" fill="url(#bg)"/>
-  <rect width="1024" height="1024" rx="228" ry="228" fill="url(#glow)"/>
-  <ellipse cx="512" cy="512" rx="280" ry="98" fill="none" stroke="#22D3EE" stroke-width="2.5" stroke-dasharray="8 12" opacity="0.5"/>
-  <circle cx="778" cy="538" r="13" fill="#22D3EE" opacity="0.95"/>
-  <circle cx="512" cy="596" r="10" fill="#22D3EE" opacity="0.85"/>
-  <circle cx="246" cy="538" r="16" fill="#22D3EE" opacity="0.95"/>
-  <circle cx="347" cy="444" r="9" fill="#67E8F9" opacity="0.75"/>
-  <circle cx="677" cy="444" r="12" fill="#67E8F9" opacity="0.85"/>
+  <rect x="102" y="102" width="820" height="820" rx="183" ry="183" fill="url(#bg)"/>
+  <rect x="102" y="102" width="820" height="820" rx="183" ry="183" fill="url(#glow)"/>
+  <rect x="102.75" y="102.75" width="818.5" height="818.5" rx="182.25" ry="182.25" fill="none" stroke="#22D3EE" stroke-width="1.5" opacity="0.55"/>
+  <ellipse cx="512" cy="512" rx="320" ry="112" fill="none" stroke="#22D3EE" stroke-width="2.5" stroke-dasharray="8 12" opacity="0.5"/>
+  <circle cx="816" cy="542" r="14" fill="#22D3EE" opacity="0.95"/>
+  <circle cx="512" cy="608" r="11" fill="#22D3EE" opacity="0.85"/>
+  <circle cx="208" cy="542" r="17" fill="#22D3EE" opacity="0.95"/>
+  <circle cx="324" cy="434" r="10" fill="#67E8F9" opacity="0.75"/>
+  <circle cx="700" cy="434" r="13" fill="#67E8F9" opacity="0.85"/>
   <g transform="translate(512 512) rotate(32)">
-    <path d="M 0,-184 C 80,-130 80,130 0,184 C -80,130 -80,-130 0,-184 Z" fill="url(#seed)"/>
-    <line x1="0" y1="-153" x2="0" y2="153" stroke="#0E7490" stroke-width="4" stroke-linecap="round" opacity="0.55"/>
+    <path d="M 0,-210 C 92,-148 92,148 0,210 C -92,148 -92,-148 0,-210 Z" fill="url(#seed)"/>
+    <line x1="0" y1="-174" x2="0" y2="174" stroke="#0E7490" stroke-width="4" stroke-linecap="round" opacity="0.55"/>
   </g>
-  <circle cx="512" cy="512" r="16" fill="none" stroke="#22D3EE" stroke-width="2.5" opacity="0.7"/>
-  <circle cx="512" cy="512" r="9" fill="#22D3EE"/>
-  <circle cx="361" cy="337" r="7" fill="#67E8F9" opacity="0.65"/>
-  <circle cx="677" cy="347" r="5" fill="#67E8F9" opacity="0.55"/>
-  <circle cx="728" cy="680" r="8" fill="#67E8F9" opacity="0.75"/>
+  <circle cx="512" cy="512" r="18" fill="none" stroke="#22D3EE" stroke-width="2.5" opacity="0.7"/>
+  <circle cx="512" cy="512" r="11" fill="#22D3EE"/>
+  <circle cx="339" cy="312" r="7" fill="#67E8F9" opacity="0.65"/>
+  <circle cx="701" cy="323" r="5" fill="#67E8F9" opacity="0.55"/>
+  <circle cx="758" cy="704" r="8" fill="#67E8F9" opacity="0.75"/>
 </svg>
