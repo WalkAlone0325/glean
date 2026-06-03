@@ -216,8 +216,69 @@ impl Scheduler {
                 let size_i64 = i64::try_from(*size).unwrap_or(i64::MAX);
                 stmt.execute(params![path, name, ext, size_i64, mtime, indexed_at])?;
             }
+            let mut fts_stmt = tx.prepare_cached(
+                "INSERT OR REPLACE INTO files_fts (rowid, name, content)
+                 SELECT id, name, '' FROM files WHERE path = ?1",
+            )?;
+            for (path, _, _, _, _, _) in batch {
+                fts_stmt.execute(params![path])?;
+            }
         }
         tx.commit()?;
+        Ok(())
+    }
+
+    pub async fn index_single(&self, path: PathBuf) -> Result<()> {
+        let walker = Walker::new(super::IgnoreRules::default());
+        if walker.is_ignored_path(&path) {
+            return Ok(());
+        }
+        let meta = walker.extract(&path)?;
+        let hash = if meta.size < 50 * 1024 * 1024 {
+            super::hash::hash_file(&path).ok()
+        } else {
+            None
+        };
+
+        let content = super::extract_text(&path, &meta.ext).await;
+        let size_i64 = i64::try_from(meta.size).unwrap_or(i64::MAX);
+
+        let db = self.db.lock().await;
+        let conn = db.conn.lock().map_err(|e| anyhow::anyhow!("db mutex: {}", e))?;
+        let now = chrono::Utc::now().timestamp();
+
+        let tx = conn.unchecked_transaction()?;
+        tx.execute(
+            "INSERT OR REPLACE INTO files (path, name, ext, size, mtime, hash, kind, indexed_at, deleted_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL)",
+            params![meta.path, meta.name, meta.ext, size_i64, meta.mtime, hash, meta.kind, now],
+        )?;
+
+        let file_id: i64 = tx.query_row(
+            "SELECT id FROM files WHERE path = ?1",
+            params![meta.path],
+            |r| r.get(0),
+        )?;
+
+        if let Some(text) = content {
+            tx.execute("DELETE FROM files_fts WHERE rowid = ?1", params![file_id])?;
+            tx.execute(
+                "INSERT INTO files_fts (rowid, name, content) VALUES (?1, ?2, ?3)",
+                params![file_id, meta.name, text],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub async fn mark_deleted(&self, path: &str) -> Result<()> {
+        let db = self.db.lock().await;
+        let conn = db.conn.lock().map_err(|e| anyhow::anyhow!("db mutex: {}", e))?;
+        let now = chrono::Utc::now().timestamp();
+        conn.execute(
+            "UPDATE files SET deleted_at = ?1 WHERE path = ?2",
+            params![now, path],
+        )?;
         Ok(())
     }
 }

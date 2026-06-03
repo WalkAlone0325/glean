@@ -17,7 +17,14 @@ export const useAppStore = defineStore(
 
     async function bootstrap() {
       try {
-        stats.value = await invoke<Stats>("get_stats");
+        const [s, roots] = await Promise.all([
+          invoke<Stats>("get_stats"),
+          invoke<string[]>("get_indexed_roots").catch(() => [] as string[]),
+        ]);
+        stats.value = s;
+        if (roots.length > 0) {
+          indexedFolders.value = roots;
+        }
       } catch (e) {
         console.warn("failed to load stats:", e);
       } finally {
@@ -27,6 +34,12 @@ export const useAppStore = defineStore(
 
     async function refreshStats() {
       stats.value = await invoke<Stats>("get_stats");
+      try {
+        const roots = await invoke<string[]>("get_indexed_roots");
+        if (roots.length > 0) indexedFolders.value = roots;
+      } catch {
+        /* ignore */
+      }
     }
 
     return { stats, indexedFolders, ready, bootstrap, refreshStats };

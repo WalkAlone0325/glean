@@ -106,7 +106,7 @@ pub fn migrations() -> Migrations<'static> {
             CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(
                 name,
                 content,
-                tokenize = 'unicode61 remove_diacritics 2'
+                tokenize = 'unicode61 remove_diacritics 2 categories L* M* C*'
             );
             "#,
         ),

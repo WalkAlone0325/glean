@@ -31,11 +31,16 @@ anyhow = "1.0.102"
 thiserror = "2.0.18"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+tracing-appender = "0.2.3"
 reqwest = { version = "0.13.4", features = ["json", "rustls", "stream"] }
 xxhash-rust = { version = "0.8.15", features = ["xxh3"] }
 chrono = { version = "0.4.44", features = ["serde"] }
 async-trait = "0.1.89"
 futures = "0.3.32"
+jieba-rs = "0.7"
+regex = "1"
+uuid = { version = "1", features = ["v4"] }
+dirs = "5"
 tauri-plugin-store = "2.4.3"
 tauri-plugin-dialog = "2.7.1"
 tauri-plugin-fs = "2.5.1"

@@ -51,6 +51,23 @@ impl Walker {
         metadata::extract(path)
     }
 
+    pub fn is_ignored_path(&self, path: &Path) -> bool {
+        if !path.exists() {
+            return true;
+        }
+        let meta = match std::fs::metadata(path) {
+            Ok(m) => m,
+            Err(_) => return true,
+        };
+        if !meta.file_type().is_file() {
+            return true;
+        }
+        if self.ignore.is_too_large(meta.len()) || self.ignore.is_ignored(path) {
+            return true;
+        }
+        false
+    }
+
     fn is_ignored_entry(&self, entry: &DirEntry) -> bool {
         entry
             .file_name()

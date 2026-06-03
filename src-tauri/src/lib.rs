@@ -1,13 +1,15 @@
+use std::path::PathBuf;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Manager,
 };
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 mod commands;
 mod db;
 mod scanner;
+mod search;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,6 +21,7 @@ pub fn run() {
             init_tray(handle)?;
             init_db(handle)?;
             init_global_shortcut(handle)?;
+            init_watcher(handle)?;
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
@@ -33,21 +36,40 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_stats,
+            commands::get_indexed_roots,
             commands::start_indexing,
             commands::cancel_indexing,
             commands::is_indexing,
+            commands::search_files,
+            commands::open_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
 fn init_tracing() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .with_target(false)
-        .compact()
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,glean=debug"));
+
+    let console_layer = fmt::layer().with_target(false).compact();
+
+    let file_layer = match dirs::data_dir() {
+        Some(dir) => {
+            let log_dir = dir.join("Glean").join("logs");
+            if std::fs::create_dir_all(&log_dir).is_err() {
+                None
+            } else {
+                let appender = tracing_appender::rolling::daily(&log_dir, "glean.log");
+                Some(fmt::layer().with_ansi(false).with_writer(appender))
+            }
+        }
+        None => None,
+    };
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(console_layer)
+        .with(file_layer)
         .init();
 }
 
@@ -86,9 +108,76 @@ fn init_db(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let database = db::Database::open(&db_path)?;
     tracing::info!("database initialized at {}", db_path.display());
     let db_arc = std::sync::Arc::new(tokio::sync::Mutex::new(database));
-    let scheduler = scanner::Scheduler::new(db_arc.clone());
+    let scheduler = std::sync::Arc::new(scanner::Scheduler::new(db_arc.clone()));
     app.manage(db_arc);
     app.manage(scheduler);
+    Ok(())
+}
+
+fn init_watcher(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let scheduler = app.state::<std::sync::Arc<scanner::Scheduler>>().inner().clone();
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
+    let defaults = vec![
+        home.join("Desktop"),
+        home.join("Documents"),
+        home.join("Downloads"),
+    ];
+    let roots = defaults
+        .into_iter()
+        .filter(|p| p.exists())
+        .collect::<Vec<_>>();
+    if roots.is_empty() {
+        tracing::warn!("no default folders to watch");
+        return Ok(());
+    }
+
+    let needs_initial_scan = {
+        let db = app
+            .state::<std::sync::Arc<tokio::sync::Mutex<db::Database>>>()
+            .inner()
+            .clone();
+        let db = db.blocking_lock();
+        let conn = db.conn.lock().map_err(|e| e.to_string())?;
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM files", [], |r| r.get(0))
+            .unwrap_or(0);
+        count == 0
+    };
+
+    if needs_initial_scan {
+        let scheduler_clone = scheduler.clone();
+        let app_clone = app.clone();
+        let scan_roots = roots.clone();
+        tracing::info!("starting initial scan of {} folders", scan_roots.len());
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = scheduler_clone.index_paths(app_clone, scan_roots).await {
+                tracing::error!("initial scan failed: {}", e);
+            }
+        });
+    } else {
+        tracing::info!("database has files, skipping initial scan");
+    }
+
+    let mut watcher = scanner::FsWatcher::new(scheduler);
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        let runtime = match tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+        {
+            Ok(rt) => rt,
+            Err(e) => {
+                tracing::error!("create watcher runtime failed: {}", e);
+                return;
+            }
+        };
+        runtime.block_on(async move {
+            if let Err(e) = watcher.watch(app_handle, roots) {
+                tracing::error!("watcher init failed: {}", e);
+            }
+            std::mem::forget(watcher);
+        });
+    });
     Ok(())
 }
 
