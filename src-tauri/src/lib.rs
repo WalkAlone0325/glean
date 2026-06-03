@@ -3,17 +3,21 @@ use tauri::{
     tray::TrayIconBuilder,
     Manager,
 };
+use tracing_subscriber::EnvFilter;
 
 mod commands;
 mod db;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    init_tracing();
+
     tauri::Builder::default()
         .setup(|app| {
             let handle = app.handle();
             init_tray(handle)?;
             init_db(handle)?;
+            init_global_shortcut(handle)?;
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
@@ -34,13 +38,28 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+fn init_tracing() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .with_target(false)
+        .compact()
+        .init();
+}
+
 fn init_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let quit = MenuItem::with_id(app, "quit", "退出 Glean", true, None::<&str>)?;
     let show = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .ok_or("missing default window icon")?;
+
     TrayIconBuilder::new()
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(icon)
         .menu(&menu)
         .tooltip("Glean")
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -62,6 +81,26 @@ fn init_db(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&dir)?;
     let db_path = dir.join("glean.sqlite");
     let database = db::Database::open(&db_path)?;
+    tracing::info!("database initialized at {}", db_path.display());
     app.manage(database);
+    Ok(())
+}
+
+fn init_global_shortcut(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
+
+    let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::Space);
+    app.global_shortcut()
+        .on_shortcut(shortcut, move |app, _shortcut, _event| {
+            if let Some(window) = app.get_webview_window("main") {
+                if window.is_visible().unwrap_or(false) {
+                    let _ = window.hide();
+                } else {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+        })?;
+    tracing::info!("global shortcut registered: Cmd+Shift+Space");
     Ok(())
 }
