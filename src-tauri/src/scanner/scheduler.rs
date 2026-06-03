@@ -41,6 +41,7 @@ pub enum IndexEvent {
 pub struct Scheduler {
     db: Arc<Mutex<Database>>,
     running: Arc<AtomicBool>,
+    paused: Arc<AtomicBool>,
 }
 
 impl Scheduler {
@@ -48,6 +49,7 @@ impl Scheduler {
         Self {
             db,
             running: Arc::new(AtomicBool::new(false)),
+            paused: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -55,8 +57,21 @@ impl Scheduler {
         self.running.load(Ordering::SeqCst)
     }
 
+    pub fn is_paused(&self) -> bool {
+        self.paused.load(Ordering::SeqCst)
+    }
+
+    pub fn pause(&self) {
+        self.paused.store(true, Ordering::SeqCst);
+    }
+
+    pub fn resume(&self) {
+        self.paused.store(false, Ordering::SeqCst);
+    }
+
     pub fn cancel(&self) {
         self.running.store(false, Ordering::SeqCst);
+        self.paused.store(false, Ordering::SeqCst);
     }
 
     pub async fn index_paths(&self, app: AppHandle, roots: Vec<PathBuf>) -> Result<()> {
@@ -101,6 +116,9 @@ impl Scheduler {
         let mut batch: FileBatch = Vec::new();
 
         for (i, path) in files.iter().enumerate() {
+            while self.paused.load(Ordering::SeqCst) && self.running.load(Ordering::SeqCst) {
+                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            }
             if !self.running.load(Ordering::SeqCst) {
                 let _ = app.emit(
                     "index-progress",

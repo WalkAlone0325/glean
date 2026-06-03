@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 
 export interface FileEntry {
@@ -23,6 +23,18 @@ export const useFilesStore = defineStore("files", () => {
   const sortDir = ref<SortDir>("desc");
   const kindFilter = ref<string | null>(null);
   const selectedId = ref<number | null>(null);
+  const nameFilter = ref("");
+
+  const filtered = computed(() => {
+    const q = nameFilter.value.trim().toLowerCase();
+    if (!q) return items.value;
+    return items.value.filter(
+      (f) =>
+        f.name.toLowerCase().includes(q) ||
+        (f.ext && f.ext.toLowerCase().includes(q)) ||
+        f.path.toLowerCase().includes(q),
+    );
+  });
 
   async function reload() {
     loading.value = true;
@@ -62,21 +74,28 @@ export const useFilesStore = defineStore("files", () => {
     reload();
   }
 
+  function setNameFilter(v: string) {
+    nameFilter.value = v;
+  }
+
   function select(id: number | null) {
     selectedId.value = id;
   }
 
   return {
     items,
+    filtered,
     loading,
     error,
     sortKey,
     sortDir,
     kindFilter,
+    nameFilter,
     selectedId,
     reload,
     toggleSort,
     setKindFilter,
+    setNameFilter,
     select,
   };
 });

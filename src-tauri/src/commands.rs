@@ -57,8 +57,92 @@ pub fn cancel_indexing(scheduler: State<'_, std::sync::Arc<Scheduler>>) {
 }
 
 #[tauri::command]
+pub fn pause_indexing(scheduler: State<'_, std::sync::Arc<Scheduler>>) {
+    scheduler.pause();
+}
+
+#[tauri::command]
+pub fn resume_indexing(scheduler: State<'_, std::sync::Arc<Scheduler>>) {
+    scheduler.resume();
+}
+
+#[tauri::command]
 pub fn is_indexing(scheduler: State<'_, std::sync::Arc<Scheduler>>) -> bool {
     scheduler.is_running()
+}
+
+#[tauri::command]
+pub fn is_paused(scheduler: State<'_, std::sync::Arc<Scheduler>>) -> bool {
+    scheduler.is_paused()
+}
+
+#[derive(serde::Serialize)]
+pub struct ConsistencyReport {
+    pub checked: u64,
+    pub missing: u64,
+    pub marked_deleted: u64,
+}
+
+#[tauri::command]
+pub async fn consistency_check(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+) -> Result<ConsistencyReport, String> {
+    let db = db.lock().await;
+    let conn = db.conn.lock().map_err(|e| e.to_string())?;
+
+    let total: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM files WHERE deleted_at IS NULL",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, path FROM files WHERE deleted_at IS NULL")
+        .map_err(|e| e.to_string())?;
+    let rows: Vec<(i64, String)> = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    drop(stmt);
+
+    let mut missing_ids: Vec<i64> = Vec::new();
+    for (id, path) in &rows {
+        if !std::path::Path::new(path).exists() {
+            missing_ids.push(*id);
+        }
+    }
+    let missing = missing_ids.len() as u64;
+
+    let now = chrono::Utc::now().timestamp();
+    let mut marked = 0u64;
+    for chunk in missing_ids.chunks(200) {
+        let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+        for id in chunk {
+            tx.execute(
+                "UPDATE files SET deleted_at = ?1 WHERE id = ?2",
+                rusqlite::params![now, id],
+            )
+            .map_err(|e| e.to_string())?;
+            marked += 1;
+        }
+        tx.commit().map_err(|e| e.to_string())?;
+    }
+
+    tracing::info!(
+        "consistency check: {} checked, {} missing, {} marked deleted",
+        total,
+        missing,
+        marked
+    );
+
+    Ok(ConsistencyReport {
+        checked: total as u64,
+        missing,
+        marked_deleted: marked,
+    })
 }
 
 #[tauri::command]

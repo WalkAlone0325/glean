@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager,
+    Emitter, Manager,
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -43,7 +43,11 @@ pub fn run() {
             commands::read_text_preview,
             commands::start_indexing,
             commands::cancel_indexing,
+            commands::pause_indexing,
+            commands::resume_indexing,
             commands::is_indexing,
+            commands::is_paused,
+            commands::consistency_check,
             commands::search_files,
             commands::hybrid_search_files,
             commands::open_file,
@@ -117,6 +121,88 @@ fn init_db(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let scheduler = std::sync::Arc::new(scanner::Scheduler::new(db_arc.clone()));
     app.manage(db_arc);
     app.manage(scheduler);
+
+    let app_clone = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+        let db = app_clone
+            .state::<std::sync::Arc<tokio::sync::Mutex<db::Database>>>()
+            .inner()
+            .clone();
+
+        let rows: Vec<(i64, String)> = {
+            let db_lock = db.lock().await;
+            let conn = match db_lock.conn.lock() {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!("consistency check db lock failed: {}", e);
+                    return;
+                }
+            };
+            let mut stmt = match conn.prepare("SELECT id, path FROM files WHERE deleted_at IS NULL") {
+                Ok(s) => s,
+                Err(e) => {
+                    tracing::warn!("consistency prepare failed: {}", e);
+                    return;
+                }
+            };
+            let rows: Vec<(i64, String)> = match stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?))) {
+                Ok(it) => it.filter_map(|r| r.ok()).collect(),
+                Err(e) => {
+                    tracing::warn!("consistency query failed: {}", e);
+                    return;
+                }
+            };
+            rows
+        };
+
+        if rows.is_empty() {
+            return;
+        }
+
+        let missing: Vec<i64> = rows
+            .iter()
+            .filter(|(_, p)| !std::path::Path::new(p).exists())
+            .map(|(id, _)| *id)
+            .collect();
+
+        if missing.is_empty() {
+            tracing::info!("consistency check: all {} files present", rows.len());
+            return;
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        {
+            let db_lock = db.lock().await;
+            let conn_guard = db_lock.conn.lock();
+            if let Ok(conn) = conn_guard {
+                let res: rusqlite::Result<()> = (|| {
+                    let tx = conn.unchecked_transaction()?;
+                    for id in &missing {
+                        tx.execute(
+                            "UPDATE files SET deleted_at = ?1 WHERE id = ?2",
+                            rusqlite::params![now, id],
+                        )?;
+                    }
+                    tx.commit()?;
+                    Ok(())
+                })();
+                if let Err(e) = res {
+                    tracing::warn!("consistency mark deleted failed: {}", e);
+                    return;
+                }
+            }
+        }
+
+        tracing::info!(
+            "consistency check: {} checked, {} marked deleted",
+            rows.len(),
+            missing.len()
+        );
+        let _ = app_clone.emit("consistency-report", missing.len());
+    });
+
     Ok(())
 }
 

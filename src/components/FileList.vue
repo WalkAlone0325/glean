@@ -14,7 +14,7 @@ const rowHeight = 44;
 
 const virtualizer = useVirtualizer(
   computed(() => ({
-    count: store.items.length,
+    count: store.filtered.length,
     getScrollElement: () => containerRef.value,
     estimateSize: () => rowHeight,
     overscan: 16,
@@ -31,7 +31,7 @@ function onDoubleClick(item: FileEntry) {
   invoke("open_file", { path: item.path });
 }
 
-watch(() => store.items, () => virtualizer.value.scrollToIndex(0), { flush: "post" });
+watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "post" });
 </script>
 
 <template>
@@ -86,10 +86,10 @@ watch(() => store.items, () => virtualizer.value.scrollToIndex(0), { flush: "pos
         {{ store.error }}
       </div>
       <div
-        v-else-if="!store.items.length"
+        v-else-if="!store.filtered.length"
         class="flex h-full items-center justify-center text-sm text-muted-foreground"
       >
-        暂无文件
+        {{ store.items.length ? "无匹配文件" : "暂无文件" }}
       </div>
       <div
         v-else
@@ -97,7 +97,7 @@ watch(() => store.items, () => virtualizer.value.scrollToIndex(0), { flush: "pos
       >
         <div
           v-for="vi in items"
-          :key="store.items[vi.index]!.id"
+          :key="store.filtered[vi.index]!.id"
           :style="{
             position: 'absolute',
             top: 0,
@@ -108,30 +108,30 @@ watch(() => store.items, () => virtualizer.value.scrollToIndex(0), { flush: "pos
           }"
         >
           <div
-            @click="store.select(store.items[vi.index]!.id)"
-            @dblclick="onDoubleClick(store.items[vi.index]!)"
-            @mouseenter="hoverId = store.items[vi.index]!.id"
+            @click="store.select(store.filtered[vi.index]!.id)"
+            @dblclick="onDoubleClick(store.filtered[vi.index]!)"
+            @mouseenter="hoverId = store.filtered[vi.index]!.id"
             @mouseleave="hoverId = null"
             :class="[
               'grid h-full grid-cols-[1fr_80px_70px_120px] items-center gap-3 px-3 text-sm',
-              isActive(store.items[vi.index]!) ? 'bg-muted' : '',
+              isActive(store.filtered[vi.index]!) ? 'bg-muted' : '',
             ]"
           >
             <div class="flex min-w-0 items-center gap-2">
               <component
-                :is="kindIcon(store.items[vi.index]!.kind)"
+                :is="kindIcon(store.filtered[vi.index]!.kind)"
                 class="size-4 shrink-0 text-muted-foreground"
               />
-              <span class="truncate">{{ store.items[vi.index]!.name }}</span>
+              <span class="truncate">{{ store.filtered[vi.index]!.name }}</span>
             </div>
             <span class="text-xs text-muted-foreground">
-              .{{ store.items[vi.index]!.ext || "—" }}
+              .{{ store.filtered[vi.index]!.ext || "—" }}
             </span>
             <span class="text-xs text-muted-foreground">
-              {{ formatSize(store.items[vi.index]!.size) }}
+              {{ formatSize(store.filtered[vi.index]!.size) }}
             </span>
             <span class="text-xs text-muted-foreground">
-              {{ formatDate(store.items[vi.index]!.mtime) }}
+              {{ formatDate(store.filtered[vi.index]!.mtime) }}
             </span>
           </div>
         </div>

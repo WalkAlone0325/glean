@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter } from "@lucide/vue";
+import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
@@ -16,7 +16,18 @@ const app = useAppStore();
 const search = useSearchStore();
 const files = useFilesStore();
 const indexing = ref(false);
+const paused = ref(false);
 const showKindMenu = ref(false);
+
+async function togglePause() {
+  if (paused.value) {
+    await invoke("resume_indexing");
+    paused.value = false;
+  } else if (indexing.value) {
+    await invoke("pause_indexing");
+    paused.value = true;
+  }
+}
 
 async function pickAndIndex() {
   const selected = await openDialog({ directory: true, multiple: false });
@@ -150,9 +161,20 @@ watch(
           </button>
         </div>
         <template v-else>
-          <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-            <div class="flex items-center gap-3">
-              <h2 class="text-sm font-semibold">{{ app.stats.files }} 个文件</h2>
+          <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+            <div class="flex flex-1 items-center gap-2 rounded-md bg-muted/50 px-2 py-1">
+              <Search class="size-3.5 text-muted-foreground" />
+              <input
+                :value="files.nameFilter"
+                @input="files.setNameFilter(($event.target as HTMLInputElement).value)"
+                placeholder="过滤当前列表..."
+                class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+              <span class="text-xs text-muted-foreground">
+                {{ files.filtered.length }}/{{ files.items.length }}
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
               <div class="relative">
                 <button
                   @click="showKindMenu = !showKindMenu"
@@ -164,7 +186,7 @@ watch(
                 <div
                   v-if="showKindMenu"
                   @mouseleave="showKindMenu = false"
-                  class="absolute left-0 top-full z-10 mt-1 w-32 rounded-md border border-border bg-background py-1 shadow-lg"
+                  class="absolute right-0 top-full z-10 mt-1 w-32 rounded-md border border-border bg-background py-1 shadow-lg"
                 >
                   <button
                     v-for="opt in kindOptions"
@@ -179,8 +201,16 @@ watch(
                   </button>
                 </div>
               </div>
-            </div>
-            <div class="flex items-center gap-2">
+              <button
+                v-if="indexing"
+                @click="togglePause"
+                class="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-muted/80"
+                :title="paused ? '恢复索引' : '暂停索引'"
+              >
+                <Play v-if="paused" class="size-3" />
+                <Pause v-else class="size-3" />
+                {{ paused ? "继续" : "暂停" }}
+              </button>
               <div
                 v-if="app.embedding.phase === 'Downloading'"
                 class="flex items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-1 text-[11px] text-blue-600 dark:text-blue-400"
@@ -215,12 +245,11 @@ watch(
               </div>
               <button
                 @click="pickAndIndex"
-                :disabled="indexing"
                 class="flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs transition hover:bg-muted/80 disabled:opacity-50"
               >
-                <Loader2 v-if="indexing" class="size-3 animate-spin" />
+                <Loader2 v-if="indexing && !paused" class="size-3 animate-spin" />
                 <FolderOpen v-else class="size-3" />
-                {{ indexing ? "索引中" : "添加" }}
+                添加
               </button>
             </div>
           </div>
