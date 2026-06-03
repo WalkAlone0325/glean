@@ -43,7 +43,6 @@ glean-data/
 .DS_Store
 .AppleDouble
 .LSOverride
-Icon?
 
 # Models (downloaded at runtime)
 models/
