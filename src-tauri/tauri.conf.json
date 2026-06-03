@@ -38,5 +38,13 @@
       "icons/icon.ico"
     ],
     "category": "Productivity"
+  },
+  "plugins": {
+    "updater": {
+      "active": false,
+      "dialog": false,
+      "pubkey": "",
+      "endpoints": []
+    }
   }
 }
