@@ -1,5 +1,7 @@
 use crate::db::Database;
-use tauri::State;
+use crate::scanner::Scheduler;
+use std::path::PathBuf;
+use tauri::{AppHandle, State};
 
 #[tauri::command]
 pub fn greet(name: &str) -> String {
@@ -7,7 +9,8 @@ pub fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-pub fn get_stats(db: State<'_, Database>) -> Result<Stats, String> {
+pub fn get_stats(db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>) -> Result<Stats, String> {
+    let db = db.blocking_lock();
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let files: i64 = conn
         .query_row(
@@ -27,6 +30,31 @@ pub fn get_stats(db: State<'_, Database>) -> Result<Stats, String> {
         chunks: chunks as u64,
         tags: tags as u64,
     })
+}
+
+#[tauri::command]
+pub async fn start_indexing(
+    app: AppHandle,
+    scheduler: State<'_, std::sync::Arc<Scheduler>>,
+    paths: Vec<PathBuf>,
+) -> Result<(), String> {
+    let scheduler = scheduler.inner().clone();
+    tokio::spawn(async move {
+        if let Err(e) = scheduler.index_paths(app, paths).await {
+            tracing::error!("indexing failed: {}", e);
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+pub fn cancel_indexing(scheduler: State<'_, std::sync::Arc<Scheduler>>) {
+    scheduler.cancel();
+}
+
+#[tauri::command]
+pub fn is_indexing(scheduler: State<'_, std::sync::Arc<Scheduler>>) -> bool {
+    scheduler.is_running()
 }
 
 #[derive(serde::Serialize)]

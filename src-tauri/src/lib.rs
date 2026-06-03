@@ -7,6 +7,7 @@ use tracing_subscriber::EnvFilter;
 
 mod commands;
 mod db;
+mod scanner;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -32,6 +33,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_stats,
+            commands::start_indexing,
+            commands::cancel_indexing,
+            commands::is_indexing,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -81,7 +85,10 @@ fn init_db(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let db_path = dir.join("glean.sqlite");
     let database = db::Database::open(&db_path)?;
     tracing::info!("database initialized at {}", db_path.display());
-    app.manage(database);
+    let db_arc = std::sync::Arc::new(tokio::sync::Mutex::new(database));
+    let scheduler = scanner::Scheduler::new(db_arc.clone());
+    app.manage(db_arc);
+    app.manage(scheduler);
     Ok(())
 }
 
