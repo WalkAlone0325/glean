@@ -16,14 +16,14 @@ const containerRef = useTemplateRef<HTMLDivElement>("containerRef");
 const hoverId = ref<number | null>(null);
 const ctxMenu = ref<{ x: number; y: number; fileId: number } | null>(null);
 
-const rowHeight = 44;
+const rowHeight = 40;
 
 const virtualizer = useVirtualizer(
   computed(() => ({
     count: store.filtered.length,
     getScrollElement: () => containerRef.value,
     estimateSize: () => rowHeight,
-    overscan: 16,
+    overscan: 20,
   })),
 );
 
@@ -91,13 +91,13 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
 
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex items-center gap-0.5 border-b border-border bg-muted/10 px-3 py-1.5 text-xs text-muted-foreground">
+    <div class="flex items-center gap-0.5 border-b border-border bg-muted/20 px-2 py-1 text-xs text-muted-foreground">
       <button
         :class="[
           'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
           !store.showRecent && !store.showFavorites
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground',
+            ? 'bg-background text-foreground shadow-xs'
+            : 'text-muted-foreground/70 hover:text-foreground',
         ]"
         @click="store.setViewMode('all')"
       >
@@ -107,8 +107,8 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         :class="[
           'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
           store.showRecent
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground',
+            ? 'bg-background text-foreground shadow-xs'
+            : 'text-muted-foreground/70 hover:text-foreground',
         ]"
         @click="store.toggleRecent()"
       >
@@ -118,8 +118,8 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         :class="[
           'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
           store.showFavorites
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground',
+            ? 'bg-background text-foreground shadow-xs'
+            : 'text-muted-foreground/70 hover:text-foreground',
         ]"
         @click="store.toggleFavorites()"
       >
@@ -127,42 +127,42 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       </button>
     </div>
     <div
-      class="grid grid-cols-[1fr_80px_70px_120px] gap-3 border-b border-border bg-muted/10 px-3 py-2 text-xs font-medium text-muted-foreground/80"
+      class="grid grid-cols-[1fr_70px_65px_110px] gap-3 border-b border-border bg-muted/15 px-3 py-2 text-[11px] font-medium text-muted-foreground/60"
     >
       <button
-        class="flex items-center gap-1 text-left transition-colors hover:text-foreground"
+        class="flex items-center gap-1 text-left transition-colors hover:text-foreground/80"
         @click="store.toggleSort('name')"
       >
         {{ t('filelist.name') }}
-        <span v-if="store.sortKey === 'name'" class="text-foreground">
-          {{ store.sortDir === "asc" ? "↑" : "↓" }}
+        <span v-if="store.sortKey === 'name'" class="text-foreground/60 text-[10px]">
+          {{ store.sortDir === "asc" ? "▲" : "▼" }}
         </span>
       </button>
       <button
-        class="flex items-center gap-1 transition-colors hover:text-foreground"
+        class="flex items-center gap-1 transition-colors hover:text-foreground/80"
         @click="store.toggleSort('ext')"
       >
         {{ t('filelist.type') }}
-        <span v-if="store.sortKey === 'ext'" class="text-foreground">
-          {{ store.sortDir === "asc" ? "↑" : "↓" }}
+        <span v-if="store.sortKey === 'ext'" class="text-foreground/60 text-[10px]">
+          {{ store.sortDir === "asc" ? "▲" : "▼" }}
         </span>
       </button>
       <button
-        class="flex items-center gap-1 transition-colors hover:text-foreground"
+        class="flex items-center gap-1 transition-colors hover:text-foreground/80"
         @click="store.toggleSort('size')"
       >
         {{ t('filelist.size') }}
-        <span v-if="store.sortKey === 'size'" class="text-foreground">
-          {{ store.sortDir === "asc" ? "↑" : "↓" }}
+        <span v-if="store.sortKey === 'size'" class="text-foreground/60 text-[10px]">
+          {{ store.sortDir === "asc" ? "▲" : "▼" }}
         </span>
       </button>
       <button
-        class="flex items-center gap-1 transition-colors hover:text-foreground"
+        class="flex items-center gap-1 transition-colors hover:text-foreground/80"
         @click="store.toggleSort('mtime')"
       >
         {{ t('filelist.mtime') }}
-        <span v-if="store.sortKey === 'mtime'" class="text-foreground">
-          {{ store.sortDir === "asc" ? "↑" : "↓" }}
+        <span v-if="store.sortKey === 'mtime'" class="text-foreground/60 text-[10px]">
+          {{ store.sortDir === "asc" ? "▲" : "▼" }}
         </span>
       </button>
     </div>
@@ -172,7 +172,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         v-if="store.loading && !store.items.length"
         class="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground"
       >
-        <Loader2 class="size-5 animate-spin" />
+        <Loader2 class="size-5 animate-spin text-muted-foreground/50" />
         <span class="text-xs">{{ t('filelist.preview_loading') }}</span>
       </div>
       <div v-else-if="store.error" class="px-3 py-6 text-sm text-red-500">
@@ -182,11 +182,11 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         v-else-if="!store.filtered.length"
         class="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground"
       >
-        <Search v-if="store.nameFilter" class="size-6 opacity-50" />
+        <Search v-if="store.nameFilter" class="size-6 opacity-40" />
         <span class="text-sm">
           {{ store.showFavorites ? t('filelist.empty_favorites') : store.showRecent ? t('filelist.empty_recent') : store.nameFilter ? t('filelist.empty_filter', { query: store.nameFilter }) : t('filelist.empty_all') }}
         </span>
-        <span v-if="store.nameFilter" class="text-xs">{{ t('filelist.empty_filter_hint') }}</span>
+        <span v-if="store.nameFilter" class="text-xs text-muted-foreground/60">{{ t('filelist.empty_filter_hint') }}</span>
       </div>
       <div
         v-else
@@ -206,15 +206,15 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         >
           <div
             :class="[
-              'grid h-full grid-cols-[1fr_80px_70px_120px] items-center gap-3 px-3 text-sm cursor-default transition-colors',
+              'grid h-full grid-cols-[1fr_70px_65px_110px] items-center gap-3 px-3 text-[13px] cursor-default transition-colors',
               isSelected(store.filtered[vi.index]!)
-                ? 'bg-primary/8 border-l-2 border-primary'
-                : isActive(store.filtered[vi.index]!)
-                  ? 'bg-muted/60'
-                  : 'hover:bg-muted/30',
-              isSelected(store.filtered[vi.index]!)
-                ? 'pl-[10px]'
-                : 'pl-3',
+                ? 'bg-accent/12 text-foreground'
+                : vi.index % 2 === 1
+                  ? 'bg-muted/15'
+                  : '',
+              !isSelected(store.filtered[vi.index]!) && hoverId === store.filtered[vi.index]!.id
+                ? 'bg-muted/40'
+                : '',
             ]"
             @click="store.select(store.filtered[vi.index]!.id)"
             @dblclick="onDoubleClick(store.filtered[vi.index]!)"
@@ -227,7 +227,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
                 :is="kindIcon(store.filtered[vi.index]!.kind)"
                 :class="[
                   'size-4 shrink-0',
-                  isSelected(store.filtered[vi.index]!) ? 'text-primary' : 'text-muted-foreground',
+                  isSelected(store.filtered[vi.index]!) ? 'text-accent' : 'text-muted-foreground/60',
                 ]"
               />
               <span
@@ -235,28 +235,28 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
                   'truncate',
                   isSelected(store.filtered[vi.index]!) ? 'font-medium' : '',
                 ]"
-                >{{ store.filtered[vi.index]!.name }}</span
-              >
+              >{{ store.filtered[vi.index]!.name }}</span>
               <button
-                class="shrink-0 rounded p-0.5 hover:bg-muted/60"
+                class="shrink-0 rounded p-0.5 opacity-0 hover:opacity-100 transition-opacity hover:bg-muted/60"
+                :class="{ 'opacity-100': store.favoriteIds.has(store.filtered[vi.index]!.id) }"
                 :title="store.favoriteIds.has(store.filtered[vi.index]!.id) ? t('filelist.rm_fav') : t('filelist.add_fav')"
                 @click.stop="doToggleFavorite(store.filtered[vi.index]!.id)"
               >
                 <Star
                   class="size-3"
                   :class="store.favoriteIds.has(store.filtered[vi.index]!.id)
-                    ? 'fill-yellow-500 text-yellow-500'
-                    : 'text-muted-foreground opacity-40 hover:opacity-80'"
+                    ? 'fill-yellow-400 text-yellow-400'
+                    : 'text-muted-foreground'"
                 />
               </button>
             </div>
-            <span class="text-xs text-muted-foreground">
+            <span class="text-xs text-muted-foreground/70">
               .{{ store.filtered[vi.index]!.ext || "—" }}
             </span>
-            <span class="text-xs text-muted-foreground">
+            <span class="text-xs text-muted-foreground/70">
               {{ formatSize(store.filtered[vi.index]!.size) }}
             </span>
-            <span class="text-xs text-muted-foreground">
+            <span class="text-xs text-muted-foreground/70">
               {{ formatDate(store.filtered[vi.index]!.mtime) }}
             </span>
           </div>
@@ -266,7 +266,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
 
     <div
       v-if="store.items.length"
-      class="flex items-center gap-2 border-t border-border bg-muted/10 px-3 py-1.5 text-[10px] text-muted-foreground/70"
+      class="flex items-center gap-2 border-t border-border bg-muted/20 px-3 py-1 text-[10px] text-muted-foreground/60"
     >
       <template v-if="store.showFavorites">
         <span>{{ store.filtered.length }} {{ t('filelist.selected_favorites') }}</span>
@@ -279,7 +279,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       </template>
       <template v-else>
         <span>{{ t('filelist.status_total', { count: store.items.length }) }}</span>
-        <span class="text-muted-foreground/40">·</span>
+        <span class="text-muted-foreground/30">·</span>
         <span>{{ t('filelist.status_hint') }}</span>
       </template>
     </div>

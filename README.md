@@ -5,6 +5,10 @@
 <h1 align="center">Glean</h1>
 
 <p align="center">
+  <a href="./README.md">中文</a> · <a href="./README_EN.md">English</a>
+</p>
+
+<p align="center">
   本地优先、AI 原生的 macOS 文件管理器<br/>
   A local-first, AI-native macOS file manager
 </p>
@@ -86,6 +90,56 @@ pnpm tauri build
 | 快捷键 | 功能 |
 |--------|------|
 | `⌘ + Shift + Space` | 显示 / 隐藏主窗口 |
+| `⌘ + K` | 文件搜索面板 |
+| `⌘ + B` | 切换 AI 助手面板 |
+| `Enter` | 打开选中文件 / 发送消息 |
+| `Esc` | 关闭面板/弹窗 |
+
+---
+
+## 📥 下载与安装 / Download & Install
+
+### macOS（Homebrew Cask 即将上线）
+
+1. 前往 [Releases](https://github.com/WalkAlone0325/glean/releases) 下载最新 `Glean_<version>_aarch64.dmg`（Apple Silicon）或 `x86_64.dmg`（Intel）
+2. 打开 `.dmg`，将 Glean 拖入 Applications
+3. 首次启动若提示"无法验证开发者"，在终端运行：
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/Glean.app
+   ```
+
+### 从源码构建
+
+```bash
+git clone https://github.com/WalkAlone0325/glean.git
+cd glean
+pnpm install
+pnpm tauri build
+```
+
+---
+
+## 🔐 隐私 / Privacy
+
+- 所有文件索引、对话历史、配置均存储在本地 SQLite，不上传任何服务器
+- API Key 仅在你使用 AI 助手时用于调用你配置的 LLM Provider
+- 不收集任何遥测、崩溃报告或使用统计
+
+[完整隐私声明 →](./docs/PRIVACY.md)
+
+---
+
+## 🗺 路线图 / Roadmap
+
+详见 [notes/plan.md](./notes/plan.md)（开发计划，仅本地可见）。
+
+| 阶段 | 状态 |
+|------|------|
+| Phase 0：项目地基 | ✅ |
+| Phase 1：文件索引 | ✅ |
+| Phase 2：语义检索 | ✅ |
+| Phase 3：Agent 工具调用 | ✅ |
+| Phase 4：打磨 + 分发 | 🚧 |
 
 ---
 

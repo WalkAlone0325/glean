@@ -200,18 +200,18 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
   >
     <div class="flex items-center justify-between border-b border-border px-4 py-2.5">
       <div class="flex items-center gap-2">
-        <Sparkles class="size-4 text-primary" />
+        <Sparkles class="size-4 text-accent" />
         <h2 class="text-sm font-semibold">{{ t('chat.title') }}</h2>
         <label class="ml-2 flex cursor-pointer items-center gap-1 text-[11px] text-muted-foreground">
-          <input v-model="chat.useRag" type="checkbox" class="size-3" />
+          <input v-model="chat.useRag" type="checkbox" class="size-3 accent-accent" />
           RAG
         </label>
       </div>
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-0.5">
         <button
           :class="[
-            'rounded-md p-1 hover:bg-muted',
-            showHistory ? 'text-primary bg-muted' : 'text-muted-foreground',
+            'rounded-md p-1.5 transition-colors',
+            showHistory ? 'text-accent bg-accent/10' : 'text-muted-foreground hover:bg-muted',
           ]"
           :title="t('chat.history', { count: chat.conversations.length })"
           @click="showHistory = !showHistory"
@@ -219,14 +219,14 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           <History class="size-4" />
         </button>
         <button
-          class="rounded-md p-1 text-muted-foreground hover:bg-muted"
+          class="rounded-md p-1.5 text-muted-foreground hover:bg-muted transition-colors"
           :title="t('chat.new_conv')"
           @click="chat.newConversation()"
         >
           <MessageSquarePlus class="size-4" />
         </button>
         <button
-          class="rounded-md p-1 text-muted-foreground hover:bg-muted"
+          class="rounded-md p-1.5 text-muted-foreground hover:bg-muted transition-colors"
           :title="t('settings.close')"
           @click="chat.togglePanel()"
         >
@@ -238,17 +238,17 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
     <div class="flex flex-1 overflow-hidden">
       <div
         v-if="showHistory"
-        class="w-44 shrink-0 overflow-auto border-r border-border bg-muted/30 py-2"
+        class="w-44 shrink-0 overflow-auto border-r border-border bg-muted/20 py-2"
       >
-        <div class="px-3 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+        <div class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
           {{ t('chat.history', { count: chat.conversations.length }) }}
         </div>
         <div
           v-for="conv in chat.conversations"
           :key="conv.id"
           :class="[
-            'group flex cursor-pointer items-start gap-1 px-2 py-1.5 hover:bg-muted',
-            conv.id === chat.conversationId ? 'bg-muted' : '',
+            'group flex cursor-pointer items-start gap-1 px-2 py-1.5',
+            conv.id === chat.conversationId ? 'bg-accent/10' : 'hover:bg-muted/60',
           ]"
           @click="selectConversation(conv.id)"
         >
@@ -256,30 +256,30 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
             <div v-if="editingId === conv.id" class="flex gap-1" @click.stop>
               <input
                 v-model="editingTitle"
-                class="w-full rounded bg-background px-1 py-0.5 text-xs outline-none ring-1 ring-primary"
+                class="w-full rounded bg-background px-1 py-0.5 text-xs outline-none ring-1 ring-accent"
                 autofocus
                 @keydown.enter="saveEdit"
                 @keydown.escape="editingId = null"
               />
-              <button class="text-primary" @click.stop="saveEdit">
+              <button class="text-accent" @click.stop="saveEdit">
                 <Check class="size-3" />
               </button>
             </div>
             <template v-else>
               <div class="truncate text-xs font-medium">{{ conv.title || t('chat.new_conv') }}</div>
-              <div class="text-[10px] text-muted-foreground">{{ formatTime(conv.updated_at) }}</div>
+              <div class="text-[10px] text-muted-foreground/60">{{ formatTime(conv.updated_at) }}</div>
             </template>
           </div>
           <div v-if="editingId !== conv.id" class="hidden gap-0.5 group-hover:flex">
             <button
-              class="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
+              class="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground transition-colors"
               :title="t('chat.rename')"
               @click.stop="startEdit(conv.id, conv.title)"
             >
               <Pencil class="size-3" />
             </button>
             <button
-              class="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-red-500"
+              class="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-destructive transition-colors"
               :title="t('chat.delete')"
               @click.stop="onDelete(conv.id)"
             >
@@ -289,7 +289,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         </div>
         <div
           v-if="!chat.conversations.length"
-          class="px-3 py-4 text-center text-[11px] text-muted-foreground"
+          class="px-3 py-4 text-center text-[11px] text-muted-foreground/60"
         >
           {{ t('chat.no_history') }}
         </div>
@@ -298,7 +298,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
       <div ref="scrollRef" class="relative flex-1 overflow-auto p-4" @scroll="onScroll">
         <div
           v-if="!chat.hasMessages"
-          class="flex h-full items-center justify-center text-xs text-muted-foreground"
+          class="flex h-full items-center justify-center text-xs text-muted-foreground/60"
         >
           {{ t('chat.start_hint') }}
         </div>
@@ -310,10 +310,10 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           >
             <div
               :class="[
-                'max-w-[85%] break-words rounded-lg px-3 py-2 text-sm',
+                'max-w-[85%] break-words rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
                 userBubble(msg)
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground',
+                  ? 'bg-accent text-accent-foreground rounded-br-md'
+                  : 'bg-muted/70 text-foreground rounded-bl-md',
               ]"
             >
               <div v-if="userBubble(msg)" class="whitespace-pre-wrap">{{ msg.content }}</div>
@@ -325,9 +325,9 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                   <details
                     v-for="tc in msg.toolCalls"
                     :key="tc.callId"
-                    class="rounded border border-border/60 bg-background/40 text-[11px]"
+                    class="rounded-lg border border-border/60 bg-background/40 text-[11px]"
                   >
-                    <summary class="flex cursor-pointer items-center gap-1.5 px-2 py-1 hover:bg-muted/40">
+                    <summary class="flex cursor-pointer items-center gap-1.5 px-2 py-1.5 hover:bg-muted/40 rounded-lg">
                       <Loader2
                         v-if="tc.status === 'running'"
                         class="size-3 animate-spin text-muted-foreground"
@@ -344,7 +344,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                         v-else-if="tc.status === 'denied'"
                         class="size-3 text-yellow-600"
                       />
-                      <AlertCircle v-else class="size-3 text-red-500" />
+                      <AlertCircle v-else class="size-3 text-destructive" />
                       <span class="font-medium">{{ tc.name || "(unknown)" }}</span>
                       <span
                         v-if="tc.status === 'pending-confirm'"
@@ -363,7 +363,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                       </span>
                       <button
                         v-if="tc.status === 'ok' && tc.operationId !== undefined && tc.operationId >= 0"
-                        class="ml-2 flex items-center gap-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] hover:bg-muted"
+                        class="ml-2 flex items-center gap-0.5 rounded-md border border-border bg-background/80 px-1.5 py-0.5 text-[10px] hover:bg-muted transition-colors"
                         :title="t('chat.undo_title')"
                         @click.stop="onUndo(tc.operationId)"
                       >
@@ -374,15 +374,15 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                     <div class="space-y-1 border-t border-border/40 px-2 py-1.5">
                       <div v-if="tc.arguments" class="text-[10px] opacity-70">
                         <div class="mb-0.5 font-medium">{{ t('chat.args') }}</div>
-                        <pre class="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/60 p-1.5 font-mono text-[10px]">{{ formatArgs(tc.arguments) }}</pre>
+                        <pre class="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/50 p-1.5 font-mono text-[10px]">{{ formatArgs(tc.arguments) }}</pre>
                       </div>
-                      <div v-if="tc.error" class="text-[10px] text-red-500">
+                      <div v-if="tc.error" class="text-[10px] text-destructive">
                         <div class="mb-0.5 font-medium">{{ t('chat.tool_error') }}</div>
                         <pre class="whitespace-pre-wrap break-all">{{ tc.error }}</pre>
                       </div>
                       <div v-else-if="tc.result" class="text-[10px] opacity-70">
                         <div class="mb-0.5 font-medium">{{ t('chat.tool_result') }}</div>
-                        <pre class="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/60 p-1.5 font-mono text-[10px]">{{ formatResult(tc.result) }}</pre>
+                        <pre class="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/50 p-1.5 font-mono text-[10px]">{{ formatResult(tc.result) }}</pre>
                       </div>
                     </div>
                   </details>
@@ -397,24 +397,24 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                 v-if="msg.rag && msg.rag.references.length"
                 class="mt-2 border-t border-border/40 pt-2"
               >
-                <div class="mb-1 text-[10px] opacity-70">{{ t('chat.references') }}</div>
+                <div class="mb-1 text-[10px] text-muted-foreground/70">{{ t('chat.references') }}</div>
                 <div class="space-y-1">
                   <div
                     v-for="(ref, ridx) in msg.rag.references"
                     :key="ridx"
-                    class="flex items-center gap-1 rounded bg-background/50 px-2 py-1 text-[11px]"
+                    class="flex items-center gap-1 rounded-lg bg-background/40 px-2 py-1 text-[11px]"
                   >
                     <span class="flex-1 truncate" :title="ref.path">{{ ref.name }}</span>
-                    <span class="text-[10px] opacity-50">[{{ ridx + 1 }}]</span>
+                    <span class="text-[10px] text-muted-foreground/50">[{{ ridx + 1 }}]</span>
                     <button
-                      class="rounded p-0.5 hover:bg-muted/80"
+                      class="rounded p-0.5 hover:bg-muted/80 transition-colors"
                       :title="t('filelist.open')"
                       @click="openFile(ref.path)"
                     >
                       <ExternalLink class="size-3" />
                     </button>
                     <button
-                      class="rounded p-0.5 hover:bg-muted/80"
+                      class="rounded p-0.5 hover:bg-muted/80 transition-colors"
                       :title="t('filelist.reveal')"
                       @click="revealInFinder(ref.path)"
                     >
@@ -425,11 +425,11 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
               </div>
             </div>
           </div>
-          <div v-if="chat.error" class="text-xs text-red-500">{{ chat.error }}</div>
+          <div v-if="chat.error" class="text-xs text-destructive">{{ chat.error }}</div>
         </div>
         <button
           v-if="showScrollToBottom"
-          class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background px-3 py-1 text-[11px] shadow-md border border-border hover:bg-muted"
+          class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 text-[11px] shadow-md border border-border hover:bg-muted transition-colors"
           @click="scrollToBottom"
         >
           {{ t('chat.scroll_bottom') }}
@@ -444,13 +444,13 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           v-model="input"
           :placeholder="t('chat.placeholder')"
           rows="1"
-          class="flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          class="flex-1 resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/20"
           style="min-height: 38px; max-height: 160px"
           @keydown="onKeydown"
         />
         <button
           v-if="chat.loading"
-          class="flex items-center justify-center rounded-md bg-red-500/80 px-3 text-white hover:bg-red-500"
+          class="flex items-center justify-center rounded-lg bg-destructive/80 px-3 text-white hover:bg-destructive transition-colors"
           :title="t('chat.stop')"
           @click="onStop"
         >
@@ -459,15 +459,11 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         <button
           v-else
           :disabled="!canSend"
-          class="flex items-center justify-center rounded-md bg-primary px-3 text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          class="flex items-center justify-center rounded-lg bg-accent px-3 text-accent-foreground hover:brightness-110 transition-all disabled:opacity-40 active:scale-[0.97]"
           @click="onSend"
         >
           <Send class="size-4" />
         </button>
-      </div>
-      <div class="mt-1.5 text-[10px] text-muted-foreground">
-        <span v-if="chat.conversationId">对话 #{{ chat.conversationId }}</span>
-        <span v-else>{{ t('chat.new_conv') }}</span>
       </div>
     </div>
 
@@ -476,40 +472,37 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         v-if="chat.pendingConfirmations && chat.pendingConfirmations.length"
         class="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm"
       >
-        <div class="w-[420px] max-w-[90vw] rounded-lg border border-border bg-background p-4 shadow-2xl">
+        <div class="w-[420px] max-w-[90vw] rounded-xl border border-border bg-background p-5 shadow-2xl animate-[fade-in_0.15s_ease-out]">
           <div class="mb-3 flex items-center gap-2">
             <AlertCircle class="size-5 text-yellow-500" />
             <h3 class="text-sm font-semibold">{{ t('chat.confirm_title') }}</h3>
           </div>
           <div class="space-y-2 text-xs">
             <div>
-              <span class="opacity-70">{{ t('chat.confirm_tool') }}:</span>
-              <span class="font-mono">{{ chat.pendingConfirmations[0]?.name }}</span>
+              <span class="text-muted-foreground">{{ t('chat.confirm_tool') }}:</span>
+              <span class="font-mono ml-1">{{ chat.pendingConfirmations[0]?.name }}</span>
             </div>
             <div>
-              <div class="mb-1 opacity-70">{{ t('chat.confirm_args') }}:</div>
-              <pre class="max-h-48 overflow-auto rounded bg-muted p-2 font-mono text-[11px] whitespace-pre-wrap break-all">{{ formatArgs(chat.pendingConfirmations[0]?.arguments || '') }}</pre>
+              <div class="mb-1 text-muted-foreground">{{ t('chat.confirm_args') }}:</div>
+              <pre class="max-h-48 overflow-auto rounded-lg bg-muted/50 p-2 font-mono text-[11px] whitespace-pre-wrap break-all">{{ formatArgs(chat.pendingConfirmations[0]?.arguments || '') }}</pre>
             </div>
-            <div class="rounded border border-yellow-500/30 bg-yellow-500/10 p-2 text-[11px] text-yellow-700 dark:text-yellow-300">
+            <div class="rounded-lg border border-yellow-500/30 bg-yellow-500/8 p-2 text-[11px] text-yellow-700 dark:text-yellow-300">
               {{ t('chat.confirm_warning') }}
             </div>
           </div>
           <div class="mt-4 flex justify-end gap-2">
             <button
-              class="rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:bg-muted"
+              class="rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:bg-muted transition-colors"
               @click="onRespond(false)"
             >
               {{ t('chat.confirm_deny') }}
             </button>
             <button
-              class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90"
+              class="rounded-md bg-accent px-3 py-1.5 text-xs text-accent-foreground hover:brightness-110 transition-all"
               @click="onRespond(true)"
             >
               {{ t('chat.confirm_approve') }}
             </button>
-          </div>
-          <div class="mt-2 text-[10px] opacity-50">
-            {{ t('chat.confirm_pending', { count: chat.pendingConfirmations?.length || 0 }) }}
           </div>
         </div>
       </div>

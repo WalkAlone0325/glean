@@ -115,140 +115,140 @@ watch(() => app.locale, (loc) => {
 </script>
 
 <template>
-    <div class="flex h-screen w-screen flex-col bg-background text-foreground">
-      <header class="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-muted/20 px-4" data-tauri-drag-region>
-        <span class="flex items-center gap-1.5 text-sm font-bold tracking-tight">
-          <Sparkles class="size-4 text-primary" />
-          Glean
-        </span>
-        <button
-          class="group ml-4 flex flex-1 items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-left text-sm text-muted-foreground shadow-sm transition hover:border-muted-foreground/30 hover:bg-muted/50"
-          @click="search.paletteOpen = true"
-        >
-          <Search class="size-4" />
-          <span class="flex-1">{{ t('header.search_placeholder') }}</span>
-          <kbd class="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tracking-wider">⌘K</kbd>
-        </button>
-        <button
-          class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-          :aria-label="t('header.ai_assistant')"
-          :title="t('header.ai_assistant')"
-          @click="chat.togglePanel()"
-        >
-          <MessageSquare class="size-4" />
-        </button>
-        <button
-          class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-          :aria-label="t('header.settings')"
-          @click="showSettings = true"
-        >
-          <Settings class="size-4" />
-        </button>
-      </header>
+  <div class="flex h-screen w-screen flex-col bg-background text-foreground select-none">
+    <header class="flex h-11 shrink-0 items-center gap-2 border-b border-border bg-sidebar/80 px-3 backdrop-blur-md" data-tauri-drag-region>
+      <span class="flex items-center gap-1.5 px-1 text-sm font-semibold tracking-tight text-foreground/80">
+        <Sparkles class="size-3.5 text-accent" />
+        Glean
+      </span>
+      <button
+        class="group ml-2 flex flex-1 items-center gap-2 rounded-lg border border-border/60 bg-background/80 px-2.5 py-1 text-sm text-muted-foreground shadow-xs backdrop-blur-sm transition hover:border-muted-foreground/30 hover:bg-background"
+        @click="search.paletteOpen = true"
+      >
+        <Search class="size-3.5" />
+        <span class="flex-1 text-[12px]">{{ t('header.search_placeholder') }}</span>
+        <kbd class="rounded-md bg-muted/60 px-1.5 py-0.5 text-[9px] font-medium tracking-wider text-muted-foreground/70">⌘K</kbd>
+      </button>
+      <button
+        class="rounded-md p-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+        :aria-label="t('header.ai_assistant')"
+        :title="t('header.ai_assistant')"
+        @click="chat.togglePanel()"
+      >
+        <MessageSquare class="size-3.5" />
+      </button>
+      <button
+        class="rounded-md p-1.5 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+        :aria-label="t('header.settings')"
+        @click="showSettings = true"
+      >
+        <Settings class="size-3.5" />
+      </button>
+    </header>
 
-      <div class="flex flex-1 overflow-hidden">
-        <aside class="flex w-52 shrink-0 flex-col border-r border-border bg-muted/20">
-          <nav class="space-y-0.5 p-2 pb-3 text-sm">
-            <a
-              :class="[
-                'flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors',
-                !files.showRecent && !files.showFavorites
-                  ? 'bg-primary/10 font-medium text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              ]"
-              @click="files.setViewMode('all')"
-            >
-              <Folder class="size-4" />
-              {{ t('sidebar.all_files') }}
-              <span class="ml-auto text-xs tabular-nums opacity-70">{{ app.stats.files }}</span>
-            </a>
-            <a
-              :class="[
-                'flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors',
-                files.showRecent
-                  ? 'bg-primary/10 font-medium text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              ]"
-              @click="files.toggleRecent()"
-            >
-              <Clock class="size-4" />
-              {{ t('sidebar.recent') }}
-            </a>
-            <a
-              :class="[
-                'flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors',
-                files.showFavorites
-                  ? 'bg-primary/10 font-medium text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              ]"
-              @click="files.toggleFavorites()"
-            >
-              <Star class="size-4" />
-              {{ t('sidebar.favorites') }}
-              <span class="ml-auto text-xs tabular-nums opacity-70">{{ files.favoriteIds.size }}</span>
-            </a>
-          </nav>
-          <div class="mx-3 border-t border-border" />
-          <div class="flex-1 overflow-auto p-2 pt-3">
-            <div class="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-              {{ t('sidebar.indexed_folders') }}
-            </div>
-            <div v-if="!app.indexedFolders?.length" class="px-2 text-xs text-muted-foreground">
-              {{ t('sidebar.no_folders') }}
-            </div>
-            <ul v-else class="space-y-0.5 text-xs">
-              <li
-                v-for="f in app.indexedFolders"
-                :key="f"
-                class="flex items-center gap-1.5 truncate rounded-md px-2 py-1 text-muted-foreground transition-colors hover:bg-muted"
-                :title="f"
-              >
-                <FolderOpen class="size-3.5 shrink-0" />
-                <span class="truncate">{{ f }}</span>
-              </li>
-            </ul>
-          </div>
-        </aside>
-
-        <main class="flex flex-1 flex-col overflow-hidden">
-          <div
-            v-if="!app.indexedFolders?.length"
-            class="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground"
+    <div class="flex flex-1 overflow-hidden">
+      <aside class="flex w-52 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+        <nav class="space-y-0.5 p-2 pt-3 text-sm">
+          <a
+            :class="[
+              'flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
+              !files.showRecent && !files.showFavorites
+                ? 'bg-accent/12 text-accent font-medium'
+                : 'text-sidebar-foreground/80 hover:bg-muted/60 hover:text-sidebar-foreground',
+            ]"
+            @click="files.setViewMode('all')"
           >
-            <div class="rounded-2xl bg-muted/40 p-5">
-              <Search class="size-10 text-muted-foreground/40" />
-            </div>
-            <div class="text-center">
-              <p class="text-sm font-medium">{{ t('empty_state.title') }}</p>
-              <p class="mt-1 text-xs opacity-60">{{ t('empty_state.subtitle') }}</p>
-            </div>
-            <button
-              :disabled="indexing"
-              class="flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"
-              @click="pickAndIndex"
-            >
-              <FolderOpen class="size-4" />
-              {{ t('empty_state.button') }}
-            </button>
+            <Folder class="size-4 -ml-0.5" />
+            {{ t('sidebar.all_files') }}
+            <span v-if="app.stats.files" class="ml-auto text-[11px] text-muted-foreground/60 tabular-nums">{{ app.stats.files }}</span>
+          </a>
+          <a
+            :class="[
+              'flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
+              files.showRecent
+                ? 'bg-accent/12 text-accent font-medium'
+                : 'text-sidebar-foreground/80 hover:bg-muted/60 hover:text-sidebar-foreground',
+            ]"
+            @click="files.toggleRecent()"
+          >
+            <Clock class="size-4 -ml-0.5" />
+            {{ t('sidebar.recent') }}
+          </a>
+          <a
+            :class="[
+              'flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
+              files.showFavorites
+                ? 'bg-accent/12 text-accent font-medium'
+                : 'text-sidebar-foreground/80 hover:bg-muted/60 hover:text-sidebar-foreground',
+            ]"
+            @click="files.toggleFavorites()"
+          >
+            <Star class="size-4 -ml-0.5" />
+            {{ t('sidebar.favorites') }}
+            <span v-if="files.favoriteIds.size" class="ml-auto text-[11px] text-muted-foreground/60 tabular-nums">{{ files.favoriteIds.size }}</span>
+          </a>
+        </nav>
+        <div class="mx-3 border-t border-sidebar-border/50" />
+        <div class="flex-1 overflow-auto p-2 pt-3">
+          <div class="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+            {{ t('sidebar.indexed_folders') }}
           </div>
+          <div v-if="!app.indexedFolders?.length" class="px-2.5 text-xs text-muted-foreground/60">
+            {{ t('sidebar.no_folders') }}
+          </div>
+          <ul v-else class="space-y-0.5">
+            <li
+              v-for="f in app.indexedFolders"
+              :key="f"
+              class="flex items-center gap-1.5 truncate rounded-md px-2 py-1 text-[12px] text-sidebar-foreground/70 transition-colors hover:bg-muted/60 hover:text-sidebar-foreground"
+              :title="f"
+            >
+              <FolderOpen class="size-3.5 shrink-0 text-muted-foreground/50" />
+              <span class="truncate">{{ f }}</span>
+            </li>
+          </ul>
+        </div>
+      </aside>
+
+      <main class="flex flex-1 flex-col overflow-hidden bg-background">
+        <div
+          v-if="!app.indexedFolders?.length"
+          class="flex flex-1 flex-col items-center justify-center gap-5 text-muted-foreground"
+        >
+          <div class="rounded-2xl bg-muted/50 p-5 ring-1 ring-border/50">
+            <Search class="size-10 text-muted-foreground/30" />
+          </div>
+          <div class="text-center space-y-1.5">
+            <p class="text-sm font-medium text-foreground/80">{{ t('empty_state.title') }}</p>
+            <p class="text-xs text-muted-foreground/60">{{ t('empty_state.subtitle') }}</p>
+          </div>
+          <button
+            :disabled="indexing"
+            class="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2 text-sm font-medium text-accent-foreground shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+            @click="pickAndIndex"
+          >
+            <FolderOpen class="size-4" />
+            {{ t('empty_state.button') }}
+          </button>
+        </div>
         <template v-else>
-          <div class="flex items-center gap-3 border-b border-border px-4 py-2">
-            <div class="flex flex-1 items-center gap-2 rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-sm shadow-sm transition-colors focus-within:border-muted-foreground/30">
-              <Search class="size-3.5 text-muted-foreground/60" />
+          <div class="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-1.5">
+            <div class="flex flex-1 items-center gap-2 rounded-md border border-border/50 bg-background/80 px-2 py-1 text-sm shadow-xs transition-colors focus-within:border-muted-foreground/30 focus-within:bg-background">
+              <Search class="size-3.5 text-muted-foreground/50" />
               <input
                 :value="files.nameFilter"
                 :placeholder="t('toolbar.filter_placeholder')"
-                class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+                class="flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground/40"
                 @input="files.setNameFilter(($event.target as HTMLInputElement).value)"
               />
-              <span class="text-[11px] tabular-nums text-muted-foreground/50">
+              <span class="text-[10px] tabular-nums text-muted-foreground/40">
                 {{ files.filtered.length }}/{{ files.items.length }}
               </span>
             </div>
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1">
               <div class="relative">
                 <button
-                  class="flex items-center gap-1 rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted/50"
+                  class="inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground shadow-xs transition hover:bg-background"
                   @click="showKindMenu = !showKindMenu"
                 >
                   <Filter class="size-3" />
@@ -256,7 +256,7 @@ watch(() => app.locale, (loc) => {
                 </button>
                 <div
                   v-if="showKindMenu"
-                  class="absolute right-0 top-full z-10 mt-1 w-32 rounded-lg border border-border bg-background py-1 shadow-lg"
+                  class="absolute right-0 top-full z-10 mt-1 w-32 rounded-lg border border-border bg-background py-1 shadow-lg animate-[slide-down_0.12s_ease-out]"
                   @mouseleave="showKindMenu = false"
                 >
                   <button
@@ -264,7 +264,7 @@ watch(() => app.locale, (loc) => {
                     :key="String(opt.value)"
                     :class="[
                       'block w-full px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted',
-                      files.kindFilter === opt.value ? 'font-medium text-foreground' : 'text-muted-foreground',
+                      files.kindFilter === opt.value ? 'font-medium text-accent' : 'text-muted-foreground',
                     ]"
                     @click="files.setKindFilter(opt.value); showKindMenu = false"
                   >
@@ -274,7 +274,7 @@ watch(() => app.locale, (loc) => {
               </div>
               <button
                 v-if="indexing"
-                class="flex items-center gap-1 rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted/50"
+                class="inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground shadow-xs transition hover:bg-background"
                 :title="paused ? t('toolbar.resume') : t('toolbar.pause')"
                 @click="togglePause"
               >
@@ -284,7 +284,7 @@ watch(() => app.locale, (loc) => {
               </button>
               <div
                 v-if="app.embedding.phase === 'Downloading'"
-                class="group relative flex items-center gap-1.5 rounded-lg bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400"
+                class="group relative flex items-center gap-1.5 rounded-md bg-blue-500/8 px-2 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400"
               >
                 <Loader2 class="size-3 animate-spin" />
                 {{ t('toolbar.downloading_model') }}
@@ -307,31 +307,27 @@ watch(() => app.locale, (loc) => {
               </div>
               <div
                 v-else-if="app.embedding.phase === 'Embedding'"
-                class="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary"
+                class="flex items-center gap-1.5 rounded-md bg-accent/8 px-2 py-1 text-[11px] font-medium text-accent"
                 :title="`已向量化 ${app.embedding.embedded} / ${app.embedding.total} chunk`"
               >
-                <Sparkles class="size-3 animate-pulse" />
+                <Sparkles class="size-3 animate-pulse-soft" />
                 {{ t('toolbar.embedding_pct', { pct: embeddingPct }) }}
               </div>
               <div
                 v-else-if="app.embedding.phase === 'Completed'"
-                class="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
-                :title="t('toolbar.embedding_ready')"
+                class="flex items-center gap-1.5 rounded-md bg-emerald-500/8 px-2 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
               >
-                <Sparkles class="size-3" />
                 {{ t('toolbar.embedding_ready') }}
               </div>
               <div
                 v-else-if="app.embedding.phase === 'Failed'"
-                class="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 dark:text-red-400"
-                :title="t('toolbar.embedding_failed')"
+                class="flex items-center gap-1.5 rounded-md bg-red-500/8 px-2 py-1 text-[11px] font-medium text-red-600 dark:text-red-400"
               >
-                <Sparkles class="size-3" />
                 {{ t('toolbar.embedding_failed') }}
               </div>
-              <div class="mx-1 h-5 w-px bg-border" />
+              <div class="mx-1.5 h-4 w-px bg-border/60" />
               <button
-                class="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground shadow-xs transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
                 @click="pickAndIndex"
               >
                 <Loader2 v-if="indexing && !paused" class="size-3 animate-spin" />

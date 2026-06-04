@@ -41,14 +41,28 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "category": "Productivity"
+    "category": "Productivity",
+    "shortDescription": "Local-first AI file manager",
+    "longDescription": "Glean is a local-first, AI-native macOS file manager. Smart indexing, semantic search, agent tools, all data stays on your device.",
+    "publisher": "Glean",
+    "copyright": "MIT © 2026 Glean Authors",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "13.0",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "entitlements": null
+    }
   },
   "plugins": {
     "updater": {
-      "active": false,
-      "dialog": false,
+      "active": true,
+      "dialog": true,
       "pubkey": "",
-      "endpoints": []
+      "endpoints": [
+        "https://github.com/WalkAlone0325/glean/releases/latest/download/latest.json"
+      ]
     }
   }
 }
