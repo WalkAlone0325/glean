@@ -29,10 +29,6 @@ const virtualizer = useVirtualizer(
 
 const items = computed(() => virtualizer.value.getVirtualItems());
 
-function isActive(item: FileEntry) {
-  return item.id === store.selectedId || item.id === hoverId.value;
-}
-
 function isSelected(item: FileEntry) {
   return item.id === store.selectedId;
 }
@@ -52,9 +48,9 @@ async function revealInFinder(path: string) {
 async function copyPath(path: string) {
   try {
     await navigator.clipboard.writeText(path);
-    toast.push("已复制路径", "success");
+    toast.push(t('toast.copied'), "success");
   } catch {
-    toast.push("复制失败", "error");
+    toast.push(t('toast.copy_failed'), "error");
   }
 }
 

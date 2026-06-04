@@ -66,7 +66,7 @@ function highlight(snippet: string | null) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\[([^\]]+)\]/g, '<mark class="rounded-sm bg-yellow-200/80 px-0.5 text-foreground dark:bg-yellow-500/40">$1</mark>');
+    .replace(/\[([^\]]+)\]/g, '<mark class="rounded-sm bg-accent/20 px-0.5 text-foreground">$1</mark>');
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -88,9 +88,9 @@ function onKeydown(e: KeyboardEvent) {
 const showPanel = computed(() => store.paletteOpen);
 
 function sourceBadge(source: "Both" | "VectorOnly" | "FtsOnly") {
-  if (source === "Both") return { text: t("search.source_both"), cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" };
-  if (source === "VectorOnly") return { text: t("search.source_vector"), cls: "bg-purple-500/15 text-purple-600 dark:text-purple-400" };
-  return { text: t("search.source_keyword"), cls: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" };
+  if (source === "Both") return { text: t("search.source_both"), cls: "bg-blue-500/10 text-blue-600 dark:text-blue-400" };
+  if (source === "VectorOnly") return { text: t("search.source_vector"), cls: "bg-purple-500/10 text-purple-600 dark:text-purple-400" };
+  return { text: t("search.source_keyword"), cls: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400" };
 }
 
 const modeLabel = computed(() => {
@@ -104,52 +104,52 @@ const modeLabel = computed(() => {
   <Teleport to="body">
     <div
       v-if="showPanel"
-      class="fixed inset-0 z-50 flex items-start justify-center bg-black/30 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-start justify-center bg-black/20 backdrop-blur-sm"
     >
       <div
         ref="root"
-        class="mt-24 flex max-h-[70vh] w-[640px] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl"
+        class="mt-[15vh] flex max-h-[60vh] w-[620px] flex-col overflow-hidden rounded-xl border border-border/60 bg-background/95 backdrop-blur-xl shadow-2xl animate-[fade-in_0.12s_ease-out]"
       >
-        <div class="flex items-center gap-2 border-b border-border px-4 py-3">
-          <Search class="size-5 text-muted-foreground" />
+        <div class="flex items-center gap-3 border-b border-border/50 px-4 py-3">
+          <Search class="size-4 text-muted-foreground/50" />
           <input
             ref="inputRef"
             :value="store.query"
             :placeholder="t('search.placeholder_expanded')"
-            class="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+            class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/40"
             @input="store.setQuery(($event.target as HTMLInputElement).value)"
             @keydown="onKeydown"
           />
-          <Loader2 v-if="store.loading" class="size-4 animate-spin text-muted-foreground" />
-          <kbd class="text-xs text-muted-foreground">ESC</kbd>
+          <Loader2 v-if="store.loading" class="size-3.5 animate-spin text-muted-foreground/50" />
+          <kbd class="text-[10px] text-muted-foreground/50 font-mono border border-border/40 rounded px-1.5 py-0.5">ESC</kbd>
         </div>
 
         <div class="search-scroll-container flex-1 overflow-auto">
-          <div v-if="store.error" class="px-4 py-6 text-sm text-red-500">
+          <div v-if="store.error" class="px-4 py-6 text-sm text-destructive">
             {{ store.error }}
           </div>
           <div
             v-else-if="store.query && !store.hasResults && !store.loading"
-            class="px-4 py-8 text-center text-sm text-muted-foreground"
+            class="px-4 py-8 text-center text-sm text-muted-foreground/60"
           >
             {{ t('search.no_results') }}
           </div>
-          <ul v-else-if="store.hasResults" class="divide-y divide-border">
+          <ul v-else-if="store.hasResults" class="py-1">
             <li
               v-for="(item, idx) in store.results"
               :key="item.id"
               ref="itemRefs"
               :class="[
-                'flex cursor-pointer items-start gap-3 px-4 py-3',
+                'flex cursor-pointer items-start gap-3 px-4 py-2.5 mx-1 rounded-lg transition-colors',
                 idx === store.hoverIndex || (store.hoverIndex === null && idx === store.selectedIndex)
-                  ? 'bg-muted'
+                  ? 'bg-accent/10'
                   : '',
               ]"
               @click="store.openAt(idx).then(() => (store.paletteOpen = false))"
               @mouseenter="store.setHover(idx)"
               @mouseleave="store.setHover(null)"
             >
-              <component :is="kindIcon(item.kind)" class="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+              <component :is="kindIcon(item.kind)" class="mt-0.5 size-5 shrink-0 text-muted-foreground/50" />
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                   <span class="truncate text-sm font-medium">{{ item.name }}</span>
@@ -160,40 +160,40 @@ const modeLabel = computed(() => {
                     {{ sourceBadge(item.source).text }}
                   </span>
                 </div>
-                <div class="truncate text-xs text-muted-foreground">{{ item.path }}</div>
+                <div class="truncate text-xs text-muted-foreground/60">{{ item.path }}</div>
                 <div
                   v-if="item.snippet"
-                  class="mt-1 line-clamp-2 text-xs text-muted-foreground"
+                  class="mt-1 line-clamp-2 text-xs text-muted-foreground/70"
                   v-html="highlight(item.snippet)"
                 />
               </div>
-              <div class="shrink-0 text-right text-xs text-muted-foreground">
+              <div class="shrink-0 text-right text-xs text-muted-foreground/50">
                 <div>{{ formatSize(item.size) }}</div>
-                <div>.{{ item.ext || "?" }}</div>
+                <div class="text-[10px]">.{{ item.ext || "?" }}</div>
               </div>
             </li>
           </ul>
-          <div v-else class="px-4 py-8 text-center text-sm text-muted-foreground">
+          <div v-else class="px-4 py-8 text-center text-sm text-muted-foreground/50">
             {{ t('search.start_hint') }}
           </div>
         </div>
 
-        <div class="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">
+        <div class="flex items-center justify-between border-t border-border/50 px-4 py-2 text-xs text-muted-foreground/60">
           <div class="flex items-center gap-3">
             <button
-              class="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted"
+              class="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted/60 transition-colors"
               :title="t('search.current_mode', { mode: modeLabel })"
               @click="store.toggleMode()"
             >
-              <span class="font-medium text-foreground">{{ modeLabel }}</span>
-              <span v-if="store.mode === 'auto'" class="text-[10px]">→ {{ store.effectiveMode === "semantic" ? t("search.mode_semantic") : t("search.mode_keyword") }}</span>
+              <span class="font-medium text-foreground/80">{{ modeLabel }}</span>
+              <span v-if="store.mode === 'auto'" class="text-[10px] text-muted-foreground/50">→ {{ store.effectiveMode === "semantic" ? t("search.mode_semantic") : t("search.mode_keyword") }}</span>
             </button>
-            <span v-if="store.hasResults">{{ t('search.results_count', { n: store.results.length }) }}</span>
+            <span v-if="store.hasResults" class="tabular-nums">{{ t('search.results_count', { n: store.results.length }) }}</span>
           </div>
           <div class="flex items-center gap-3">
-            <span><kbd class="font-mono">Tab</kbd> {{ t('search.hint_mode') }}</span>
-            <span><kbd class="font-mono">↑↓</kbd> {{ t('search.hint_nav') }}</span>
-            <span><kbd class="font-mono">⏎</kbd> {{ t('search.hint_open') }}</span>
+            <span><kbd class="font-mono text-[10px]">Tab</kbd> {{ t('search.hint_mode') }}</span>
+            <span><kbd class="font-mono text-[10px]">↑↓</kbd> {{ t('search.hint_nav') }}</span>
+            <span><kbd class="font-mono text-[10px]">⏎</kbd> {{ t('search.hint_open') }}</span>
           </div>
         </div>
       </div>

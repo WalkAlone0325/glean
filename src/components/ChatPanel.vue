@@ -151,8 +151,8 @@ function onRespond(approved: boolean) {
 
 async function onUndo(operationId: number) {
   const ok = await chat.undoOperation(operationId);
-  if (ok) toast.success("已撤销");
-  else toast.error("撤销失败：" + (chat.error || "未知错误"));
+  if (ok) toast.success(t('chat.undo_success'));
+  else toast.error(t('chat.undo_failed', { msg: chat.error || t('chat.unknown_error') }));
 }
 
 function formatTime(ts: number): string {
@@ -160,11 +160,11 @@ function formatTime(ts: number): string {
   const d = new Date(ts * 1000);
   const now = new Date();
   const diff = (now.getTime() - d.getTime()) / 1000;
-  if (diff < 60) return "刚刚";
-  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
-  if (diff < 7 * 86400) return `${Math.floor(diff / 86400)} 天前`;
-  return d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
+  if (diff < 60) return t('chat.just_now');
+  if (diff < 3600) return t('chat.minutes_ago', { n: Math.floor(diff / 60) });
+  if (diff < 86400) return t('chat.hours_ago', { n: Math.floor(diff / 3600) });
+  if (diff < 7 * 86400) return t('chat.days_ago', { n: Math.floor(diff / 86400) });
+  return d.toLocaleDateString(i18nLocale.value, { month: "2-digit", day: "2-digit" });
 }
 
 async function selectConversation(id: number) {

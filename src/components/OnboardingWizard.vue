@@ -43,53 +43,53 @@ function onSkip() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md">
-    <div class="w-[480px] max-w-[90vw] rounded-2xl border border-border bg-background p-8 shadow-2xl">
-      <!-- welcome -->
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md">
+    <div class="w-[460px] max-w-[90vw] rounded-xl border border-border/60 bg-background/95 backdrop-blur-xl p-7 shadow-2xl animate-[fade-in_0.2s_ease-out]">
       <template v-if="step === 'welcome'">
         <div class="mb-6 text-center">
-          <div class="mb-3 text-3xl">🌾</div>
+          <div class="mb-4 mx-auto flex size-14 items-center justify-center rounded-full bg-accent/10">
+            <span class="text-2xl">🌾</span>
+          </div>
           <h2 class="text-lg font-semibold">{{ t('onboarding.welcome_title') }}</h2>
-          <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+          <p class="mt-2 text-sm leading-relaxed text-muted-foreground/80">
             {{ t('onboarding.welcome_desc') }}
           </p>
         </div>
-        <div class="space-y-3 text-xs text-muted-foreground">
-          <div class="flex items-start gap-3 rounded-lg bg-muted/40 p-3">
-            <span class="text-lg leading-none">🔍</span>
+        <div class="space-y-2.5 text-xs text-muted-foreground">
+          <div class="flex items-start gap-3 rounded-lg bg-muted/30 p-3">
+            <span class="mt-0.5 text-lg leading-none">🔍</span>
             <div>
-              <div class="font-medium text-foreground">{{ t('onboarding.feature_search') }}</div>
-              <div>{{ t('onboarding.feature_search_desc') }}</div>
+              <div class="font-medium text-foreground/90">{{ t('onboarding.feature_search') }}</div>
+              <div class="mt-0.5 text-muted-foreground/70">{{ t('onboarding.feature_search_desc') }}</div>
             </div>
           </div>
-          <div class="flex items-start gap-3 rounded-lg bg-muted/40 p-3">
-            <span class="text-lg leading-none">🤖</span>
+          <div class="flex items-start gap-3 rounded-lg bg-muted/30 p-3">
+            <span class="mt-0.5 text-lg leading-none">🤖</span>
             <div>
-              <div class="font-medium text-foreground">{{ t('onboarding.feature_agent') }}</div>
-              <div>{{ t('onboarding.feature_agent_desc') }}</div>
+              <div class="font-medium text-foreground/90">{{ t('onboarding.feature_agent') }}</div>
+              <div class="mt-0.5 text-muted-foreground/70">{{ t('onboarding.feature_agent_desc') }}</div>
             </div>
           </div>
-          <div class="flex items-start gap-3 rounded-lg bg-muted/40 p-3">
-            <span class="text-lg leading-none">🔒</span>
+          <div class="flex items-start gap-3 rounded-lg bg-muted/30 p-3">
+            <span class="mt-0.5 text-lg leading-none">🔒</span>
             <div>
-              <div class="font-medium text-foreground">{{ t('onboarding.feature_privacy') }}</div>
-              <div>{{ t('onboarding.feature_privacy_desc') }}</div>
+              <div class="font-medium text-foreground/90">{{ t('onboarding.feature_privacy') }}</div>
+              <div class="mt-0.5 text-muted-foreground/70">{{ t('onboarding.feature_privacy_desc') }}</div>
             </div>
           </div>
         </div>
       </template>
 
-      <!-- folders -->
       <template v-if="step === 'folders'">
         <div class="mb-6 text-center">
           <h2 class="text-lg font-semibold">{{ t('onboarding.folder_title') }}</h2>
-          <p class="mt-1 text-sm text-muted-foreground">{{ t('onboarding.folder_desc') }}</p>
+          <p class="mt-1 text-sm text-muted-foreground/70">{{ t('onboarding.folder_desc') }}</p>
         </div>
-        <div class="mb-4 space-y-2">
-          <div v-for="f in folders" :key="f" class="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
-            <span class="flex-1 font-mono">{{ f }}</span>
+        <div class="mb-3 space-y-1.5">
+          <div v-for="f in folders" :key="f" class="flex items-center gap-2 rounded-md bg-muted/30 px-3 py-2 text-xs">
+            <span class="flex-1 font-mono truncate">{{ f }}</span>
             <button
-              class="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-red-500"
+              class="rounded p-0.5 text-muted-foreground/60 hover:bg-muted hover:text-destructive transition-colors"
               :aria-label="t('onboarding.folder_remove')" @click="onRemoveFolder(f)"
             >
               ✕
@@ -97,28 +97,29 @@ function onSkip() {
           </div>
         </div>
         <button
-          class="mb-4 w-full rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:bg-muted/40"
+          class="mb-4 w-full rounded-md border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground/70 hover:bg-muted/30 transition-colors"
           @click="onAddFolder"
         >
           {{ t('onboarding.folder_add') }}
         </button>
       </template>
 
-      <!-- done -->
       <template v-if="step === 'done'">
         <div class="mb-6 text-center">
-          <div class="mb-3 text-3xl">🚀</div>
+          <div class="mb-4 mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/10">
+            <span class="text-2xl">🚀</span>
+          </div>
           <h2 class="text-lg font-semibold">{{ t('onboarding.done_title') }}</h2>
-          <p class="mt-2 text-sm text-muted-foreground">
+          <p class="mt-2 text-sm text-muted-foreground/80">
             {{ t('onboarding.done_desc') }}
           </p>
         </div>
       </template>
 
-      <div class="mt-8 flex items-center justify-between">
-        <button class="text-xs text-muted-foreground hover:text-foreground" @click="onSkip">{{ t('onboarding.skip') }}</button>
+      <div class="mt-6 flex items-center justify-between">
+        <button class="text-xs text-muted-foreground/60 hover:text-foreground transition-colors" @click="onSkip">{{ t('onboarding.skip') }}</button>
         <button
-          class="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          class="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-accent-foreground shadow-xs hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50"
           :disabled="indexing"
           @click="onNext"
         >

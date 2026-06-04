@@ -125,6 +125,9 @@
     "delete": "Delete",
     "undo_title": "Undo this operation",
     "undo": "Undo",
+    "undo_success": "Undone",
+    "undo_failed": "Undo failed: {msg}",
+    "unknown_error": "Unknown error",
     "tool_error": "Error",
     "tool_result": "Result",
     "args": "Arguments"

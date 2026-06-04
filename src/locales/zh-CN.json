@@ -125,6 +125,9 @@
     "delete": "删除",
     "undo_title": "撤销此操作",
     "undo": "撤销",
+    "undo_success": "已撤销",
+    "undo_failed": "撤销失败：{msg}",
+    "unknown_error": "未知错误",
     "tool_error": "错误",
     "tool_result": "结果",
     "args": "参数"

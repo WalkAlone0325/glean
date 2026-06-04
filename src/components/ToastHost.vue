@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import { useToastStore } from "../stores/toast";
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from "@lucide/vue";
 
+const { t } = useI18n();
 const toast = useToastStore();
 </script>
 
@@ -41,7 +43,7 @@ const toast = useToastStore();
           </div>
           <button
             class="ml-1 rounded p-0.5 opacity-60 hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/10"
-            aria-label="关闭"
+            :aria-label="t('settings.close')"
             @click="toast.remove(t.id)"
           >
             <X class="size-3.5" />

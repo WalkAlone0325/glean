@@ -168,344 +168,351 @@ const shortcuts = [
 
 <template>
   <Teleport to="body">
-      <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-        <div
-          ref="root"
-          class="flex max-h-[85vh] w-[600px] max-w-[90vw] flex-col rounded-2xl border border-border bg-background shadow-2xl"
-        >
-          <div class="flex items-center justify-between border-b border-border px-6 py-4">
-            <h2 class="text-base font-semibold">{{ t('settings.title') }}</h2>
-            <button
-              class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-              :aria-label="t('settings.close')"
-              @click="emit('close')"
-            >
-              <X class="size-4" />
-            </button>
-          </div>
+    <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div
+        ref="root"
+        class="flex max-h-[80vh] w-[580px] max-w-[90vw] flex-col rounded-xl border border-border bg-background shadow-2xl animate-[fade-in_0.15s_ease-out]"
+      >
+        <div class="flex items-center justify-between border-b border-border px-5 py-3">
+          <h2 class="text-sm font-semibold">{{ t('settings.title') }}</h2>
+          <button
+            class="rounded-md p-1 text-muted-foreground hover:bg-muted transition-colors"
+            :aria-label="t('settings.close')"
+            @click="emit('close')"
+          >
+            <X class="size-4" />
+          </button>
+        </div>
 
-          <div class="flex-1 overflow-y-auto space-y-5 p-6">
-            <!-- LLM Provider -->
-            <section class="rounded-xl border border-border bg-muted/10 p-5">
-              <h3 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <HardDrive class="size-3.5" />
-                {{ t('settings.llm_provider') }}
-              </h3>
+        <div class="flex-1 overflow-y-auto space-y-4 p-5">
+          <section class="space-y-4">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <HardDrive class="size-3.5" />
+              {{ t('settings.llm_provider') }}
+            </h3>
 
-              <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('settings.presets') }}</label>
-              <div class="mb-4 flex flex-wrap gap-1.5">
+            <div>
+              <label class="mb-1 block text-xs font-medium text-muted-foreground/80">{{ t('settings.presets') }}</label>
+              <div class="flex flex-wrap gap-1">
                 <button
                   v-for="name in providerPresets" :key="name"
                   :class="[
-                    'rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+                    'rounded-md px-2.5 py-1 text-xs font-medium transition-all',
                     settings.config.provider === name
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                      ? 'bg-accent text-accent-foreground shadow-xs'
+                      : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
                   ]"
                   @click="onPreset(name)"
                 >
                   {{ name }}
                 </button>
               </div>
+            </div>
 
-              <div class="space-y-3">
-                <div>
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('settings.base_url') }}</label>
+            <div class="space-y-3">
+              <div>
+                <label class="mb-1 block text-xs font-medium text-muted-foreground/80">{{ t('settings.base_url') }}</label>
+                <input
+                  v-model="settings.config.base_url"
+                  class="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/20"
+                  placeholder="https://api.openai.com/v1"
+                />
+              </div>
+              <div>
+                <label class="mb-1 block text-xs font-medium text-muted-foreground/80">{{ t('settings.api_key') }}</label>
+                <div class="flex items-center gap-1.5">
                   <input
-                    v-model="settings.config.base_url"
-                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20"
-                    placeholder="https://api.openai.com/v1"
+                    v-model="settings.config.api_key" :type="showKey ? 'text' : 'password'"
+                    class="flex-1 rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/20"
+                    placeholder="sk-..." autocomplete="off"
                   />
-                </div>
-                <div>
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('settings.api_key') }}</label>
-                  <div class="flex items-center gap-1.5">
-                    <input
-                      v-model="settings.config.api_key" :type="showKey ? 'text' : 'password'"
-                      class="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20"
-                      placeholder="sk-..." autocomplete="off"
-                    />
-                    <button
-                      class="rounded-lg border border-border bg-muted p-2 text-muted-foreground hover:bg-muted/80 transition-colors shrink-0"
-                      :title="showKey ? t('settings.hide_key') : t('settings.show_key')"
-                      @click="showKey = !showKey"
-                    >
-                      <Eye v-if="!showKey" class="size-4" />
-                      <EyeOff v-else class="size-4" />
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label class="mb-1.5 block text-xs font-medium text-muted-foreground">{{ t('settings.model') }}</label>
-                  <input
-                    v-model="settings.config.model"
-                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20"
-                    placeholder="gpt-4o-mini"
-                  />
+                  <button
+                    class="rounded-md border border-border/60 bg-muted/60 p-1.5 text-muted-foreground hover:bg-muted transition-colors shrink-0"
+                    :title="showKey ? t('settings.hide_key') : t('settings.show_key')"
+                    @click="showKey = !showKey"
+                  >
+                    <Eye v-if="!showKey" class="size-3.5" />
+                    <EyeOff v-else class="size-3.5" />
+                  </button>
                 </div>
               </div>
-
-              <div class="mt-4 flex items-center gap-3">
-                <button
-                  :disabled="testing"
-                  class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors disabled:opacity-50"
-                  @click="onTest"
-                >
-                  <Loader2 v-if="testing" class="size-3 animate-spin" />
-                  {{ t('settings.test') }}
-                </button>
-                <div
-                  v-if="testResult"
-                  :class="[
-                    'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium',
-                    testResult.ok
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
-                      : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400'
-                  ]"
-                >
-                  <CheckCircle2 v-if="testResult.ok" class="size-3.5 shrink-0" />
-                  <AlertCircle v-else class="size-3.5 shrink-0" />
-                  <span class="truncate max-w-[300px]" :title="testResult.message">{{ testResult.message }}</span>
-                </div>
+              <div>
+                <label class="mb-1 block text-xs font-medium text-muted-foreground/80">{{ t('settings.model') }}</label>
+                <input
+                  v-model="settings.config.model"
+                  class="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/20"
+                  placeholder="gpt-4o-mini"
+                />
               </div>
-            </section>
+            </div>
 
-            <!-- 索引管理 -->
-            <section class="rounded-xl border border-border bg-muted/10 p-5">
-              <h3 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <FolderTree class="size-3.5" />
-                {{ t('settings.indexing') }}
-              </h3>
-
-              <div class="mb-3 flex items-center gap-2">
-                <span class="text-xs text-muted-foreground">{{ t('settings.index_status') }}:</span>
-                <span
-                  v-if="indexing"
-                  class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                >
-                  <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {{ t('settings.index_running') }}
-                </span>
-                <span
-                  v-else-if="paused"
-                  class="inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-2.5 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400"
-                >
-                  <span class="size-1.5 rounded-full bg-yellow-500" />
-                  {{ t('settings.index_paused') }}
-                </span>
-                <span
-                  v-else
-                  class="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
-                >
-                  <span class="size-1.5 rounded-full bg-muted-foreground/50" />
-                  {{ t('settings.index_idle') }}
-                </span>
-              </div>
-
-              <div class="mb-3 flex gap-1.5">
-                <button
-                  v-if="!indexing && !paused"
-                  class="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
-                  @click="onStartIndex"
-                >
-                  {{ t('settings.index_start') }}
-                </button>
-                <button
-                  v-if="indexing && !paused"
-                  class="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted/50 transition-colors"
-                  @click="onPauseIndex"
-                >
-                  {{ t('settings.index_pause') }}
-                </button>
-                <button
-                  v-if="paused"
-                  class="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
-                  @click="onResumeIndex"
-                >
-                  {{ t('settings.index_resume') }}
-                </button>
-                <button
-                  v-if="indexing || paused"
-                  class="rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500 transition-colors"
-                  @click="onCancelIndex"
-                >
-                  {{ t('settings.index_cancel') }}
-                </button>
-              </div>
-
-              <div v-if="indexedRoots.length" class="space-y-1">
-                <div class="text-xs font-medium text-muted-foreground">{{ t('settings.index_dirs') }}:</div>
-                <div
-                  v-for="r in indexedRoots" :key="r"
-                  class="rounded-lg bg-muted/30 px-3 py-1.5 font-mono text-[11px] text-muted-foreground truncate"
-                >
-                  {{ r }}
-                </div>
-              </div>
-            </section>
-
-            <section class="rounded-xl border border-border bg-muted/10 p-5">
-              <h3 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <FileText class="size-3.5" />
-                {{ t('settings.stats') }}
-              </h3>
-
-              <div class="grid grid-cols-3 gap-3">
-                <div class="rounded-xl border border-border bg-background p-3.5 text-center">
-                  <FileText class="mx-auto mb-1.5 size-5 text-muted-foreground/60" />
-                  <div class="text-xl font-bold tabular-nums">{{ stats.files }}</div>
-                  <div class="mt-0.5 text-[11px] text-muted-foreground">{{ t('settings.stats_files') }}</div>
-                </div>
-                <div class="rounded-xl border border-border bg-background p-3.5 text-center">
-                  <Hash class="mx-auto mb-1.5 size-5 text-muted-foreground/60" />
-                  <div class="text-xl font-bold tabular-nums">{{ stats.chunks }}</div>
-                  <div class="mt-0.5 text-[11px] text-muted-foreground">{{ t('settings.stats_chunks') }}</div>
-                </div>
-                <div class="rounded-xl border border-border bg-background p-3.5 text-center">
-                  <Tags class="mx-auto mb-1.5 size-5 text-muted-foreground/60" />
-                  <div class="text-xl font-bold tabular-nums">{{ stats.tags }}</div>
-                  <div class="mt-0.5 text-[11px] text-muted-foreground">{{ t('settings.stats_tags') }}</div>
-                </div>
-              </div>
-            </section>
-
-            <section class="rounded-xl border border-border bg-muted/10 p-5">
-              <h3 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <Palette class="size-3.5" />
-                {{ t('settings.theme') }}
-              </h3>
-
-              <div class="inline-flex rounded-lg border border-border bg-background p-0.5">
-                <button
-                  v-for="th in (['light', 'dark', 'system'] as const)" :key="th"
-                  :class="[
-                    'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
-                    app.theme === th
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  ]"
-                  @click="onThemeChange(th)"
-                >
-                  <Sun v-if="th === 'light'" class="size-3.5" />
-                  <Moon v-else-if="th === 'dark'" class="size-3.5" />
-                  <Monitor v-else class="size-3.5" />
-                  {{ t('settings.theme_' + th) }}
-                </button>
-              </div>
-            </section>
-
-            <section class="rounded-xl border border-border bg-muted/10 p-5">
-              <h3 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <Languages class="size-3.5" />
-                {{ t('settings.language') }}
-              </h3>
-
-              <select
-                v-model="app.locale"
-                class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/20"
+            <div class="flex items-center gap-3">
+              <button
+                :disabled="testing"
+                class="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/60 px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                @click="onTest"
               >
-                <option value="zh-CN">简体中文</option>
-                <option value="en">English</option>
-              </select>
-            </section>
-
-            <section class="rounded-xl border border-border bg-muted/10 p-5">
-              <h3 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <Keyboard class="size-3.5" />
-                {{ t('settings.shortcuts') }}
-              </h3>
-
-              <div class="divide-y divide-border rounded-lg border border-border bg-background">
-                <div
-                  v-for="(s, i) in shortcuts" :key="s.keys"
-                  class="flex items-center justify-between px-3 py-2 text-xs"
-                  :class="i % 2 === 1 ? 'bg-muted/20' : ''"
-                >
-                  <span class="text-muted-foreground">{{ s.desc }}</span>
-                  <kbd class="rounded-md bg-muted px-2 py-0.5 font-mono text-[10px] tracking-wider text-foreground/70 border border-border/50">{{ s.keys }}</kbd>
-                </div>
+                <Loader2 v-if="testing" class="size-3 animate-spin" />
+                {{ t('settings.test') }}
+              </button>
+              <div
+                v-if="testResult"
+                :class="[
+                  'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium',
+                  testResult.ok
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
+                    : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400'
+                ]"
+              >
+                <CheckCircle2 v-if="testResult.ok" class="size-3.5 shrink-0" />
+                <AlertCircle v-else class="size-3.5 shrink-0" />
+                <span class="truncate max-w-[280px]" :title="testResult.message">{{ testResult.message }}</span>
               </div>
-            </section>
+            </div>
+          </section>
 
-            <section class="rounded-xl border border-border bg-muted/10 p-5">
-              <h3 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <FileText class="size-3.5" />
-                {{ t('settings.ignore_rules') }}
-              </h3>
-              <p class="mb-3 text-[11px] leading-relaxed text-muted-foreground">
-                {{ t('settings.ignore_desc') }}
-              </p>
-              <textarea
-                v-model="ignoreRules"
-                class="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono outline-none transition-colors focus:border-primary"
-                rows="6"
-                placeholder="*.log&#10;tmp/&#10;.temp"
-              ></textarea>
-              <div class="mt-3 flex justify-end">
-                <button
-                  class="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:opacity-90"
-                  @click="onSaveIgnoreRules"
-                >
-                  {{ t('settings.ignore_save') }}
-                </button>
+          <div class="border-t border-border/50" />
+
+          <section class="space-y-3">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <FolderTree class="size-3.5" />
+              {{ t('settings.indexing') }}
+            </h3>
+
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-muted-foreground/70">{{ t('settings.index_status') }}:</span>
+              <span
+                v-if="indexing"
+                class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+              >
+                <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {{ t('settings.index_running') }}
+              </span>
+              <span
+                v-else-if="paused"
+                class="inline-flex items-center gap-1.5 rounded-full bg-yellow-50 px-2.5 py-0.5 text-xs font-medium text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400"
+              >
+                <span class="size-1.5 rounded-full bg-yellow-500" />
+                {{ t('settings.index_paused') }}
+              </span>
+              <span
+                v-else
+                class="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+              >
+                <span class="size-1.5 rounded-full bg-muted-foreground/40" />
+                {{ t('settings.index_idle') }}
+              </span>
+            </div>
+
+            <div class="flex gap-1.5">
+              <button
+                v-if="!indexing && !paused"
+                class="rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground shadow-xs hover:brightness-110 transition-all"
+                @click="onStartIndex"
+              >
+                {{ t('settings.index_start') }}
+              </button>
+              <button
+                v-if="indexing && !paused"
+                class="rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-muted/50 transition-colors"
+                @click="onPauseIndex"
+              >
+                {{ t('settings.index_pause') }}
+              </button>
+              <button
+                v-if="paused"
+                class="rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground shadow-xs hover:brightness-110 transition-all"
+                @click="onResumeIndex"
+              >
+                {{ t('settings.index_resume') }}
+              </button>
+              <button
+                v-if="indexing || paused"
+                class="rounded-md bg-destructive/80 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-destructive transition-colors"
+                @click="onCancelIndex"
+              >
+                {{ t('settings.index_cancel') }}
+              </button>
+            </div>
+
+            <div v-if="indexedRoots.length" class="space-y-1">
+              <div class="text-xs font-medium text-muted-foreground/70">{{ t('settings.index_dirs') }}:</div>
+              <div
+                v-for="r in indexedRoots" :key="r"
+                class="rounded-md bg-muted/30 px-2.5 py-1 font-mono text-[11px] text-muted-foreground/70 truncate"
+              >
+                {{ r }}
               </div>
-            </section>
+            </div>
+          </section>
 
-            <section class="rounded-xl border border-border bg-muted/10 p-5">
-              <h3 class="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <Lock class="size-3.5" />
-                {{ t('settings.privacy') }}
-              </h3>
+          <div class="border-t border-border/50" />
 
-              <div class="space-y-2 text-[12px] leading-relaxed text-muted-foreground">
-                <div class="flex items-start gap-2">
-                  <span class="mt-0.5 block size-1.5 shrink-0 rounded-full bg-muted-foreground/30" />
-                  <span>{{ t('settings.privacy_local') }}</span>
-                </div>
-                <div class="flex items-start gap-2">
-                  <span class="mt-0.5 block size-1.5 shrink-0 rounded-full bg-muted-foreground/30" />
-                  <span>{{ t('settings.privacy_key') }}</span>
-                </div>
-                <div class="flex items-start gap-2">
-                  <span class="mt-0.5 block size-1.5 shrink-0 rounded-full bg-muted-foreground/30" />
-                  <span>{{ t('settings.privacy_telemetry') }}</span>
-                </div>
-                <div class="flex items-start gap-2">
-                  <span class="mt-0.5 block size-1.5 shrink-0 rounded-full bg-muted-foreground/30" />
-                  <span>{{ t('settings.privacy_config') }}</span>
-                </div>
+          <section class="space-y-3">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <FileText class="size-3.5" />
+              {{ t('settings.stats') }}
+            </h3>
+
+            <div class="grid grid-cols-3 gap-2">
+              <div class="rounded-lg border border-border/50 bg-muted/20 p-3 text-center">
+                <FileText class="mx-auto mb-1.5 size-5 text-muted-foreground/40" />
+                <div class="text-lg font-bold tabular-nums">{{ stats.files }}</div>
+                <div class="mt-0.5 text-[11px] text-muted-foreground/60">{{ t('settings.stats_files') }}</div>
               </div>
-            </section>
-          </div>
+              <div class="rounded-lg border border-border/50 bg-muted/20 p-3 text-center">
+                <Hash class="mx-auto mb-1.5 size-5 text-muted-foreground/40" />
+                <div class="text-lg font-bold tabular-nums">{{ stats.chunks }}</div>
+                <div class="mt-0.5 text-[11px] text-muted-foreground/60">{{ t('settings.stats_chunks') }}</div>
+              </div>
+              <div class="rounded-lg border border-border/50 bg-muted/20 p-3 text-center">
+                <Tags class="mx-auto mb-1.5 size-5 text-muted-foreground/40" />
+                <div class="text-lg font-bold tabular-nums">{{ stats.tags }}</div>
+                <div class="mt-0.5 text-[11px] text-muted-foreground/60">{{ t('settings.stats_tags') }}</div>
+              </div>
+            </div>
+          </section>
 
-          <div class="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
-            <button
-              class="rounded-lg border border-border bg-background px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-              @click="emit('close')"
+          <div class="border-t border-border/50" />
+
+          <section class="space-y-3">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <Palette class="size-3.5" />
+              {{ t('settings.theme') }}
+            </h3>
+
+            <div class="inline-flex rounded-lg border border-border/60 bg-muted/30 p-0.5">
+              <button
+                v-for="th in (['light', 'dark', 'system'] as const)" :key="th"
+                :class="[
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+                  app.theme === th
+                    ? 'bg-background text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                ]"
+                @click="onThemeChange(th)"
+              >
+                <Sun v-if="th === 'light'" class="size-3.5" />
+                <Moon v-else-if="th === 'dark'" class="size-3.5" />
+                <Monitor v-else class="size-3.5" />
+                {{ t('settings.theme_' + th) }}
+              </button>
+            </div>
+          </section>
+
+          <div class="border-t border-border/50" />
+
+          <section class="space-y-3">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <Languages class="size-3.5" />
+              {{ t('settings.language') }}
+            </h3>
+
+            <select
+              v-model="app.locale"
+              class="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/20"
             >
-              {{ t('settings.cancel') }}
-            </button>
-            <button
-              :disabled="saving"
-              class="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
-              @click="onSave"
-            >
-              <Loader2 v-if="saving" class="size-3.5 animate-spin" />
-              {{ t('settings.save') }}
-            </button>
-          </div>
+              <option value="zh-CN">{{ t('settings.lang_zh') }}</option>
+              <option value="en">{{ t('settings.lang_en') }}</option>
+            </select>
+          </section>
+
+          <div class="border-t border-border/50" />
+
+          <section class="space-y-3">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <Keyboard class="size-3.5" />
+              {{ t('settings.shortcuts') }}
+            </h3>
+
+            <div class="divide-y divide-border/50 rounded-lg border border-border/50 bg-background/80">
+              <div
+                v-for="(s, i) in shortcuts" :key="s.keys"
+                class="flex items-center justify-between px-3 py-2 text-xs"
+                :class="i % 2 === 1 ? 'bg-muted/20' : ''"
+              >
+                <span class="text-muted-foreground/80">{{ s.desc }}</span>
+                <kbd class="rounded-md bg-muted/70 px-2 py-0.5 font-mono text-[10px] tracking-wider text-foreground/60 border border-border/40">{{ s.keys }}</kbd>
+              </div>
+            </div>
+          </section>
+
+          <div class="border-t border-border/50" />
+
+          <section class="space-y-3">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <FileText class="size-3.5" />
+              {{ t('settings.ignore_rules') }}
+            </h3>
+            <p class="text-[11px] leading-relaxed text-muted-foreground/70">
+              {{ t('settings.ignore_desc') }}
+            </p>
+            <textarea
+              v-model="ignoreRules"
+              class="w-full rounded-md border border-border/60 bg-background px-2.5 py-2 text-xs font-mono outline-none transition-colors focus:border-accent"
+              rows="5"
+              placeholder="*.log&#10;tmp/&#10;.temp"
+            ></textarea>
+            <div class="flex justify-end">
+              <button
+                class="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground shadow-xs hover:brightness-110 transition-all"
+                @click="onSaveIgnoreRules"
+              >
+                {{ t('settings.ignore_save') }}
+              </button>
+            </div>
+          </section>
+
+          <div class="border-t border-border/50" />
+
+          <section class="space-y-3">
+            <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <Lock class="size-3.5" />
+              {{ t('settings.privacy') }}
+            </h3>
+
+            <div class="space-y-2 text-[12px] leading-relaxed text-muted-foreground/80">
+              <div class="flex items-start gap-2">
+                <span class="mt-0.5 block size-1.5 shrink-0 rounded-full bg-muted-foreground/20" />
+                <span>{{ t('settings.privacy_local') }}</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="mt-0.5 block size-1.5 shrink-0 rounded-full bg-muted-foreground/20" />
+                <span>{{ t('settings.privacy_key') }}</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="mt-0.5 block size-1.5 shrink-0 rounded-full bg-muted-foreground/20" />
+                <span>{{ t('settings.privacy_telemetry') }}</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="mt-0.5 block size-1.5 shrink-0 rounded-full bg-muted-foreground/20" />
+                <span>{{ t('settings.privacy_config') }}</span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+          <button
+            class="rounded-md border border-border/60 bg-background px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+            @click="emit('close')"
+          >
+            {{ t('settings.cancel') }}
+          </button>
+          <button
+            :disabled="saving"
+            class="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-1.5 text-xs font-medium text-accent-foreground shadow-xs hover:brightness-110 transition-all disabled:opacity-50"
+            @click="onSave"
+          >
+            <Loader2 v-if="saving" class="size-3.5 animate-spin" />
+            {{ t('settings.save') }}
+          </button>
         </div>
       </div>
+    </div>
   </Teleport>
 </template>
 
 <style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
+  /* transition handled by animate- */
 </style>
