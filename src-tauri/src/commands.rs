@@ -308,6 +308,69 @@ pub struct FileEntry {
 }
 
 #[tauri::command]
+pub async fn toggle_favorite(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    file_id: i64,
+) -> Result<bool, String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    let exists: bool = conn
+        .query_row(
+            "SELECT 1 FROM favorites WHERE file_id = ?1",
+            rusqlite::params![file_id],
+            |_| Ok(true),
+        )
+        .unwrap_or(false);
+    if exists {
+        conn.execute("DELETE FROM favorites WHERE file_id = ?1", rusqlite::params![file_id])
+            .map_err(|e| e.to_string())?;
+        Ok(false)
+    } else {
+        conn.execute(
+            "INSERT INTO favorites (file_id) VALUES (?1)",
+            rusqlite::params![file_id],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
+#[tauri::command]
+pub async fn list_favorite_files(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+) -> Result<Vec<FileEntry>, String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT f.id, f.path, f.name, f.ext, f.size, f.mtime, f.kind
+             FROM favorites fav
+             JOIN files f ON f.id = fav.file_id
+             WHERE f.deleted_at IS NULL
+             ORDER BY fav.created_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(FileEntry {
+                id: r.get(0)?,
+                path: r.get(1)?,
+                name: r.get(2)?,
+                ext: r.get(3)?,
+                size: r.get(4)?,
+                mtime: r.get(5)?,
+                kind: r.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+#[tauri::command]
 pub fn list_files(
     db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
     sort: Option<String>,

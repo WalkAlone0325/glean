@@ -4,7 +4,7 @@ import { useVirtualizer } from "@tanstack/vue-virtual";
 import { invoke } from "@tauri-apps/api/core";
 import { useFilesStore, type FileEntry } from "../stores/files";
 import { useToastStore } from "../stores/toast";
-import { Loader2, ExternalLink, FolderOpen, Copy, Search } from "@lucide/vue";
+import { Loader2, ExternalLink, FolderOpen, Copy, Search, Star } from "@lucide/vue";
 import { kindIcon, formatSize, formatDate } from "../utils/fileKind";
 import ContextMenu from "./ContextMenu.vue";
 
@@ -80,10 +80,8 @@ async function ctxAction(action: "open" | "finder" | "copy") {
   else if (action === "copy") await copyPath(f.path);
 }
 
-function switchToAll() {
-  store.showRecent = false;
-  store.select(null);
-  if (!store.items.length) store.reload();
+async function doToggleFavorite(fileId: number) {
+  await store.toggleFavorite(fileId);
 }
 
 watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "post" });
@@ -91,7 +89,16 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
 
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex items-center gap-2 border-b border-border px-3 py-1 text-[10px] text-muted-foreground">
+    <div class="flex items-center gap-1.5 border-b border-border px-3 py-1 text-[10px] text-muted-foreground">
+      <button
+        :class="[
+          'rounded px-2 py-0.5',
+          !store.showRecent && !store.showFavorites ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+        ]"
+        @click="store.setViewMode('all')"
+      >
+        全部文件
+      </button>
       <button
         :class="[
           'rounded px-2 py-0.5',
@@ -104,11 +111,11 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       <button
         :class="[
           'rounded px-2 py-0.5',
-          !store.showRecent ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+          store.showFavorites ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
         ]"
-        @click="switchToAll"
+        @click="store.toggleFavorites()"
       >
-        全部文件
+        星标文件
       </button>
     </div>
     <div
@@ -169,7 +176,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       >
         <Search v-if="store.nameFilter" class="size-6 opacity-50" />
         <span class="text-sm">
-          {{ store.showRecent ? "暂无最近查看的文件" : store.nameFilter ? `没有匹配 "${store.nameFilter}" 的文件` : "暂无文件" }}
+          {{ store.showFavorites ? "暂无星标文件" : store.showRecent ? "暂无最近查看的文件" : store.nameFilter ? `没有匹配 "${store.nameFilter}" 的文件` : "暂无文件" }}
         </span>
         <span v-if="store.nameFilter" class="text-xs">试试清空过滤词或更换关键词</span>
       </div>
@@ -222,6 +229,18 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
                 ]"
                 >{{ store.filtered[vi.index]!.name }}</span
               >
+              <button
+                class="shrink-0 rounded p-0.5 hover:bg-muted/60"
+                :title="store.favoriteIds.has(store.filtered[vi.index]!.id) ? '取消星标' : '添加星标'"
+                @click.stop="doToggleFavorite(store.filtered[vi.index]!.id)"
+              >
+                <Star
+                  class="size-3"
+                  :class="store.favoriteIds.has(store.filtered[vi.index]!.id)
+                    ? 'fill-yellow-500 text-yellow-500'
+                    : 'text-muted-foreground opacity-40 hover:opacity-80'"
+                />
+              </button>
             </div>
             <span class="text-xs text-muted-foreground">
               .{{ store.filtered[vi.index]!.ext || "—" }}
@@ -241,7 +260,10 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       v-if="store.items.length"
       class="border-t border-border px-3 py-1 text-[10px] text-muted-foreground"
     >
-      <template v-if="store.showRecent">
+      <template v-if="store.showFavorites">
+        {{ store.filtered.length }} 个星标文件
+      </template>
+      <template v-else-if="store.showRecent">
         {{ store.filtered.length }} 个最近查看
       </template>
       <template v-else-if="store.nameFilter">

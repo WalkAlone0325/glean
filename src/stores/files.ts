@@ -22,7 +22,10 @@ export type SortDir = "asc" | "desc";
 export const useFilesStore = defineStore("files", () => {
   const items = ref<FileEntry[]>([]);
   const recentItems = ref<RecentFile[]>([]);
+  const favoriteItems = ref<FileEntry[]>([]);
+  const favoriteIds = ref<Set<number>>(new Set());
   const showRecent = ref(false);
+  const showFavorites = ref(false);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const sortKey = ref<SortKey>("mtime");
@@ -32,6 +35,7 @@ export const useFilesStore = defineStore("files", () => {
   const nameFilter = ref("");
 
   const filtered = computed(() => {
+    if (showFavorites.value) return favoriteItems.value;
     if (showRecent.value) return recentItems.value as unknown as FileEntry[];
     const q = nameFilter.value.trim().toLowerCase();
     if (!q) return items.value;
@@ -109,15 +113,65 @@ export const useFilesStore = defineStore("files", () => {
     }
   }
 
+  async function loadFavoriteFiles() {
+    try {
+      const list = await invoke<FileEntry[]>("list_favorite_files");
+      favoriteItems.value = list;
+      favoriteIds.value = new Set(list.map((f) => f.id));
+    } catch (e) {
+      console.warn("load favorites failed:", e);
+    }
+  }
+
+  async function toggleFavorite(fileId: number): Promise<boolean> {
+    try {
+      const nowFav = await invoke<boolean>("toggle_favorite", { fileId });
+      if (nowFav) {
+        favoriteIds.value.add(fileId);
+      } else {
+        favoriteIds.value.delete(fileId);
+        favoriteItems.value = favoriteItems.value.filter((f) => f.id !== fileId);
+      }
+      if (showFavorites.value && !nowFav) {
+        favoriteItems.value = [...favoriteIds.value].map((id) => {
+          const found = items.value.find((f) => f.id === id);
+          if (found) return found;
+          return favoriteItems.value.find((f) => f.id === id)!;
+        }).filter(Boolean);
+      }
+      return nowFav;
+    } catch (e) {
+      console.warn("toggle favorite failed:", e);
+      return false;
+    }
+  }
+
   function toggleRecent() {
+    showFavorites.value = false;
     showRecent.value = !showRecent.value;
     if (showRecent.value) loadRecentFiles();
+  }
+
+  function toggleFavorites() {
+    showRecent.value = false;
+    showFavorites.value = !showFavorites.value;
+    if (showFavorites.value) loadFavoriteFiles();
+  }
+
+  function setViewMode(mode: "all" | "recent" | "favorites") {
+    showFavorites.value = mode === "favorites";
+    showRecent.value = mode === "recent";
+    if (mode === "favorites") loadFavoriteFiles();
+    else if (mode === "recent") loadRecentFiles();
   }
 
   return {
     items,
     recentItems,
+    favoriteItems,
+    favoriteIds,
     showRecent,
+    showFavorites,
     filtered,
     loading,
     error,
@@ -132,6 +186,10 @@ export const useFilesStore = defineStore("files", () => {
     setNameFilter,
     select,
     loadRecentFiles,
+    loadFavoriteFiles,
     toggleRecent,
+    toggleFavorites,
+    toggleFavorite,
+    setViewMode,
   };
 });
