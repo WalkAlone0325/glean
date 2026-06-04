@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-background: hsl(0 0% 100%);
   --color-foreground: hsl(240 10% 3.9%);
@@ -12,16 +14,14 @@
     -apple-system, BlinkMacSystemFont, "Inter", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  @theme {
-    --color-background: hsl(240 10% 3.9%);
-    --color-foreground: hsl(0 0% 98%);
-    --color-muted: hsl(240 3.7% 15.9%);
-    --color-muted-foreground: hsl(240 5% 64.9%);
-    --color-border: hsl(240 3.7% 15.9%);
-    --color-primary: hsl(0 0% 98%);
-    --color-primary-foreground: hsl(240 5.9% 10%);
-  }
+.dark {
+  --color-background: hsl(240 10% 3.9%);
+  --color-foreground: hsl(0 0% 98%);
+  --color-muted: hsl(240 3.7% 15.9%);
+  --color-muted-foreground: hsl(240 5% 64.9%);
+  --color-border: hsl(240 3.7% 15.9%);
+  --color-primary: hsl(0 0% 98%);
+  --color-primary-foreground: hsl(240 5.9% 10%);
 }
 
 html,
@@ -95,13 +95,11 @@ body {
   font-size: 0.85em;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  .markdown-body code:not(.hljs) {
-    background: hsl(0 0% 18%);
-  }
-  .markdown-body a {
-    color: hsl(200 95% 65%);
-  }
+.dark .markdown-body code:not(.hljs) {
+  background: hsl(0 0% 18%);
+}
+.dark .markdown-body a {
+  color: hsl(200 95% 65%);
 }
 .markdown-body pre {
   margin: 0.5em 0;
@@ -112,11 +110,9 @@ body {
   margin: 0.5em 0;
   color: hsl(0 0% 40%);
 }
-@media (prefers-color-scheme: dark) {
-  .markdown-body blockquote {
-    border-left-color: hsl(0 0% 35%);
-    color: hsl(0 0% 65%);
-  }
+.dark .markdown-body blockquote {
+  border-left-color: hsl(0 0% 35%);
+  color: hsl(0 0% 65%);
 }
 .markdown-body table {
   border-collapse: collapse;
@@ -128,9 +124,7 @@ body {
   border: 1px solid hsl(0 0% 85%);
   padding: 0.3em 0.6em;
 }
-@media (prefers-color-scheme: dark) {
-  .markdown-body th,
-  .markdown-body td {
-    border-color: hsl(0 0% 25%);
-  }
+.dark .markdown-body th,
+.dark .markdown-body td {
+  border-color: hsl(0 0% 25%);
 }

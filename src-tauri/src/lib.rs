@@ -77,6 +77,8 @@ pub fn run() {
             commands::delete_tag,
             commands::get_file_tags,
             commands::set_file_tags,
+            commands::get_ignore_rules,
+            commands::set_ignore_rules,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

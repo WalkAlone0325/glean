@@ -14,6 +14,7 @@ import DetailPanel from "./components/DetailPanel.vue";
 import ToastHost from "./components/ToastHost.vue";
 import SettingsModal from "./components/SettingsModal.vue";
 import ChatPanel from "./components/ChatPanel.vue";
+import OnboardingWizard from "./components/OnboardingWizard.vue";
 import { useChatStore } from "./stores/chat";
 
 const app = useAppStore();
@@ -25,6 +26,7 @@ const indexing = ref(false);
 const paused = ref(false);
 const showKindMenu = ref(false);
 const showSettings = ref(false);
+const showFirstRun = ref(true);
 
 async function togglePause() {
   if (paused.value) {
@@ -305,5 +307,6 @@ watch(
     <SearchPalette />
     <ToastHost />
     <SettingsModal v-if="showSettings" @close="showSettings = false" />
+    <OnboardingWizard v-if="app.ready && app.isFirstRun" @close="showFirstRun = false" />
   </div>
 </template>

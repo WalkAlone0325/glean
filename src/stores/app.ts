@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 
 export interface Stats {
@@ -61,20 +61,34 @@ export const useAppStore = defineStore(
       embedding.value = p;
     }
 
+    let mq: MediaQueryList | null = null;
+
     function applyTheme(t: "light" | "dark" | "system") {
       theme.value = t;
       const html = document.documentElement;
+      html.classList.remove("light", "dark");
       if (t === "system") {
-        html.classList.remove("light", "dark");
         const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         html.classList.add(prefersDark ? "dark" : "light");
       } else {
-        html.classList.remove("light", "dark");
         html.classList.add(t);
       }
     }
 
-    return { stats, indexedFolders, ready, embedding, theme, locale, applyTheme, bootstrap, refreshStats, updateEmbedding };
+    if (typeof window !== "undefined") {
+      mq = window.matchMedia("(prefers-color-scheme: dark)");
+      mq.addEventListener("change", (e) => {
+        if (theme.value === "system") {
+          const html = document.documentElement;
+          html.classList.remove("light", "dark");
+          html.classList.add(e.matches ? "dark" : "light");
+        }
+      });
+    }
+
+    const isFirstRun = computed(() => ready.value && indexedFolders.value.length === 0 && stats.value.files === 0);
+
+    return { stats, indexedFolders, ready, embedding, theme, locale, isFirstRun, applyTheme, bootstrap, refreshStats, updateEmbedding };
   },
   { persist: { pick: ["indexedFolders", "theme", "locale"] } },
 );

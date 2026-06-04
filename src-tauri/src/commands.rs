@@ -885,6 +885,47 @@ pub async fn set_file_tags(
     Ok(())
 }
 
+// ── Ignore Rules ──
+
+#[tauri::command]
+pub fn get_ignore_rules(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+) -> Result<Vec<String>, String> {
+    let db_lock = db.blocking_lock();
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT value FROM settings WHERE key = 'ignore_rules'")
+        .map_err(|e| e.to_string())?;
+    let result: Result<Option<String>, _> = stmt.query_row([], |r| r.get::<_, String>(0)).map(Some).or_else(|e| {
+        if e == rusqlite::Error::QueryReturnedNoRows {
+            Ok(None)
+        } else {
+            Err(e)
+        }
+    });
+    match result {
+        Ok(Some(val)) => Ok(val.lines().map(|l| l.to_string()).collect()),
+        Ok(None) => Ok(Vec::new()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn set_ignore_rules(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    rules: Vec<String>,
+) -> Result<(), String> {
+    let value = rules.join("\n");
+    let db_lock = db.blocking_lock();
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('ignore_rules', ?1, strftime('%s','now'))",
+        rusqlite::params![&value],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 pub struct Stats {
     pub files: u64,
