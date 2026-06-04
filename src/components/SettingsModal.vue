@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { X, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle } from "@lucide/vue";
+import { onMounted, ref, reactive } from "vue";
+import { X, Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, FolderTree, HardDrive } from "@lucide/vue";
 import { onClickOutside, useMagicKeys, whenever } from "@vueuse/core";
+import { invoke } from "@tauri-apps/api/core";
 import { useSettingsStore, providerPresets } from "../stores/settings";
 import { useToastStore } from "../stores/toast";
 
@@ -15,20 +16,87 @@ const testing = ref(false);
 const testResult = ref<{ ok: boolean; message: string } | null>(null);
 const saving = ref(false);
 
+const stats = reactive({ files: 0, chunks: 0, tags: 0 });
+const indexedRoots = ref<string[]>([]);
+const indexing = ref(false);
+const paused = ref(false);
+
 onClickOutside(root, () => emit("close"));
 const keys = useMagicKeys();
 whenever(keys.escape, () => emit("close"));
 
-onMounted(() => settings.load());
+onMounted(async () => {
+  settings.load();
+  await loadStats();
+  await loadIndexedRoots();
+  await loadIndexStatus();
+});
+
+async function loadStats() {
+  try {
+    const s = await invoke<{ files: number; chunks: number; tags: number }>("get_stats");
+    stats.files = s.files;
+    stats.chunks = s.chunks;
+    stats.tags = s.tags;
+  } catch { /* ignore */ }
+}
+
+async function loadIndexedRoots() {
+  try {
+    indexedRoots.value = await invoke<string[]>("get_indexed_roots");
+  } catch { /* ignore */ }
+}
+
+async function loadIndexStatus() {
+  try {
+    indexing.value = await invoke<boolean>("is_indexing");
+    paused.value = await invoke<boolean>("is_paused");
+  } catch { /* ignore */ }
+}
+
+async function onStartIndex() {
+  try {
+    await invoke("start_indexing");
+    indexing.value = true;
+    paused.value = false;
+    toast.success("索引已启动");
+  } catch (e) {
+    toast.error("启动索引失败: " + String(e));
+  }
+}
+
+async function onCancelIndex() {
+  try {
+    await invoke("cancel_indexing");
+    indexing.value = false;
+    paused.value = false;
+  } catch (e) {
+    toast.error("取消失败: " + String(e));
+  }
+}
+
+async function onPauseIndex() {
+  try {
+    await invoke("pause_indexing");
+    paused.value = true;
+  } catch { /* ignore */ }
+}
+
+async function onResumeIndex() {
+  try {
+    await invoke("resume_indexing");
+    paused.value = false;
+  } catch { /* ignore */ }
+}
 
 async function onSave() {
   saving.value = true;
   try {
     await settings.save();
-    toast.push("设置已保存", "success");
+    toast.success("设置已保存");
     emit("close");
   } catch (e) {
-    toast.push("保存失败: " + String(e), "error");
+    toast.error("保存失败: " + String(e));
   } finally {
     saving.value = false;
   }
@@ -75,12 +143,13 @@ function onPreset(name: string) {
           </button>
         </div>
 
-        <div class="flex-1 overflow-auto p-5">
-          <section class="mb-5">
-            <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <div class="flex-1 overflow-auto p-5 space-y-6">
+          <!-- LLM Provider -->
+          <section>
+            <h3 class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <HardDrive class="size-3.5" />
               LLM Provider
             </h3>
-
             <div class="mb-3 flex flex-wrap gap-1.5">
               <button
                 v-for="name in providerPresets"
@@ -96,14 +165,12 @@ function onPreset(name: string) {
                 {{ name }}
               </button>
             </div>
-
             <label class="mb-1 block text-xs text-muted-foreground">Base URL</label>
             <input
               v-model="settings.config.base_url"
               class="mb-3 w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
               placeholder="https://api.openai.com/v1"
             />
-
             <label class="mb-1 block text-xs text-muted-foreground">API Key</label>
             <div class="mb-3 flex items-center gap-1">
               <input
@@ -122,14 +189,12 @@ function onPreset(name: string) {
                 <EyeOff v-else class="size-4" />
               </button>
             </div>
-
             <label class="mb-1 block text-xs text-muted-foreground">Model</label>
             <input
               v-model="settings.config.model"
               class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
               placeholder="gpt-4o-mini"
             />
-
             <div class="mt-3 flex items-center gap-2">
               <button
                 :disabled="testing"
@@ -153,6 +218,80 @@ function onPreset(name: string) {
             </div>
           </section>
 
+          <!-- 索引管理 -->
+          <section>
+            <h3 class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <FolderTree class="size-3.5" />
+              索引管理
+            </h3>
+            <div class="mb-2 space-y-1">
+              <div class="flex items-center gap-2 text-xs">
+                <span class="opacity-70">状态：</span>
+                <span v-if="indexing" class="text-emerald-600 dark:text-emerald-400">正在索引...</span>
+                <span v-else-if="paused" class="text-yellow-600">已暂停</span>
+                <span v-else class="opacity-70">空闲</span>
+              </div>
+            </div>
+            <div class="mb-3 flex gap-1.5">
+              <button
+                v-if="!indexing && !paused"
+                class="rounded-md bg-primary px-2.5 py-1 text-xs text-primary-foreground hover:opacity-90"
+                @click="onStartIndex"
+              >
+                开始索引
+              </button>
+              <button
+                v-if="indexing && !paused"
+                class="rounded-md bg-muted px-2.5 py-1 text-xs hover:bg-muted/80"
+                @click="onPauseIndex"
+              >
+                暂停
+              </button>
+              <button
+                v-if="paused"
+                class="rounded-md bg-primary px-2.5 py-1 text-xs text-primary-foreground hover:opacity-90"
+                @click="onResumeIndex"
+              >
+                恢复
+              </button>
+              <button
+                v-if="indexing || paused"
+                class="rounded-md bg-red-500/80 px-2.5 py-1 text-xs text-white hover:bg-red-500"
+                @click="onCancelIndex"
+              >
+                取消
+              </button>
+            </div>
+            <div v-if="indexedRoots.length" class="text-xs">
+              <div class="mb-1 opacity-70">已索引目录：</div>
+              <div v-for="r in indexedRoots" :key="r" class="rounded bg-muted/40 px-2 py-0.5 font-mono text-[10px]">
+                {{ r }}
+              </div>
+            </div>
+          </section>
+
+          <!-- 统计 -->
+          <section>
+            <h3 class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              统计
+            </h3>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+              <div class="rounded-md bg-muted/40 p-2">
+                <div class="text-lg font-semibold">{{ stats.files }}</div>
+                <div class="opacity-60">文件</div>
+              </div>
+              <div class="rounded-md bg-muted/40 p-2">
+                <div class="text-lg font-semibold">{{ stats.chunks }}</div>
+                <div class="opacity-60">分块</div>
+              </div>
+              <div class="rounded-md bg-muted/40 p-2">
+                <div class="text-lg font-semibold">{{ stats.tags }}</div>
+                <div class="opacity-60">标签</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 提示 -->
           <section class="rounded-md bg-muted/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
             <p class="mb-1.5 font-medium text-foreground">提示</p>
             <p class="mb-1">• 所有配置存储在本地 SQLite，不上传任何服务器</p>
