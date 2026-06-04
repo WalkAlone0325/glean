@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useSearchStore } from "../stores/search";
 import { FileText, Search, Loader2 } from "@lucide/vue";
 import { onClickOutside, useMagicKeys, whenever } from "@vueuse/core";
 
+const { t } = useI18n();
 const store = useSearchStore();
 const root = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLInputElement | null>(null);
@@ -86,15 +88,15 @@ function onKeydown(e: KeyboardEvent) {
 const showPanel = computed(() => store.paletteOpen);
 
 function sourceBadge(source: "Both" | "VectorOnly" | "FtsOnly") {
-  if (source === "Both") return { text: "语义+关键词", cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" };
-  if (source === "VectorOnly") return { text: "语义", cls: "bg-purple-500/15 text-purple-600 dark:text-purple-400" };
-  return { text: "关键词", cls: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" };
+  if (source === "Both") return { text: t("search.source_both"), cls: "bg-blue-500/15 text-blue-600 dark:text-blue-400" };
+  if (source === "VectorOnly") return { text: t("search.source_vector"), cls: "bg-purple-500/15 text-purple-600 dark:text-purple-400" };
+  return { text: t("search.source_keyword"), cls: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400" };
 }
 
 const modeLabel = computed(() => {
-  if (store.mode === "keyword") return "关键词";
-  if (store.mode === "semantic") return "语义";
-  return "自动";
+  if (store.mode === "keyword") return t("search.mode_keyword");
+  if (store.mode === "semantic") return t("search.mode_semantic");
+  return t("search.mode_auto");
 });
 </script>
 
@@ -113,7 +115,7 @@ const modeLabel = computed(() => {
           <input
             ref="inputRef"
             :value="store.query"
-            placeholder="搜索文件名、内容..."
+            :placeholder="t('search.placeholder_expanded')"
             class="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
             @input="store.setQuery(($event.target as HTMLInputElement).value)"
             @keydown="onKeydown"
@@ -130,7 +132,7 @@ const modeLabel = computed(() => {
             v-else-if="store.query && !store.hasResults && !store.loading"
             class="px-4 py-8 text-center text-sm text-muted-foreground"
           >
-            没有匹配的文件
+            {{ t('search.no_results') }}
           </div>
           <ul v-else-if="store.hasResults" class="divide-y divide-border">
             <li
@@ -172,7 +174,7 @@ const modeLabel = computed(() => {
             </li>
           </ul>
           <div v-else class="px-4 py-8 text-center text-sm text-muted-foreground">
-            输入关键词开始搜索
+            {{ t('search.start_hint') }}
           </div>
         </div>
 
@@ -180,18 +182,18 @@ const modeLabel = computed(() => {
           <div class="flex items-center gap-3">
             <button
               class="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted"
-              :title="`当前: ${modeLabel}（Tab 切换）`"
+              :title="t('search.current_mode', { mode: modeLabel })"
               @click="store.toggleMode()"
             >
               <span class="font-medium text-foreground">{{ modeLabel }}</span>
-              <span v-if="store.mode === 'auto'" class="text-[10px]">→ {{ store.effectiveMode === "semantic" ? "语义" : "关键词" }}</span>
+              <span v-if="store.mode === 'auto'" class="text-[10px]">→ {{ store.effectiveMode === "semantic" ? t("search.mode_semantic") : t("search.mode_keyword") }}</span>
             </button>
-            <span v-if="store.hasResults">{{ store.results.length }} 个结果</span>
+            <span v-if="store.hasResults">{{ t('search.results_count', { n: store.results.length }) }}</span>
           </div>
           <div class="flex items-center gap-3">
-            <span><kbd class="font-mono">Tab</kbd> 模式</span>
-            <span><kbd class="font-mono">↑↓</kbd> 选择</span>
-            <span><kbd class="font-mono">⏎</kbd> 打开</span>
+            <span><kbd class="font-mono">Tab</kbd> {{ t('search.hint_mode') }}</span>
+            <span><kbd class="font-mono">↑↓</kbd> {{ t('search.hint_nav') }}</span>
+            <span><kbd class="font-mono">⏎</kbd> {{ t('search.hint_open') }}</span>
           </div>
         </div>
       </div>

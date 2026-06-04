@@ -349,39 +349,39 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                       <span
                         v-if="tc.status === 'pending-confirm'"
                         class="ml-auto text-[10px] text-yellow-600"
-                      >等待确认</span>
+                      >{{ t('chat.tool_waiting') }}</span>
                       <span
                         v-else-if="tc.status === 'denied'"
                         class="ml-auto text-[10px] text-yellow-600"
-                      >已拒绝</span>
+                      >{{ t('chat.tool_denied') }}</span>
                       <span
                         v-else-if="tc.status === 'undone'"
                         class="ml-auto text-[10px] text-emerald-600"
-                      >已撤销</span>
+                      >{{ t('chat.tool_undone') }}</span>
                       <span v-else-if="tc.durationMs !== undefined" class="ml-auto text-[10px] opacity-60">
                         {{ tc.durationMs }}ms
                       </span>
                       <button
                         v-if="tc.status === 'ok' && tc.operationId !== undefined && tc.operationId >= 0"
                         class="ml-2 flex items-center gap-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] hover:bg-muted"
-                        title="撤销此操作"
+                        :title="t('chat.undo_title')"
                         @click.stop="onUndo(tc.operationId)"
                       >
                         <Undo2 class="size-3" />
-                        撤销
+                        {{ t('chat.undo') }}
                       </button>
                     </summary>
                     <div class="space-y-1 border-t border-border/40 px-2 py-1.5">
                       <div v-if="tc.arguments" class="text-[10px] opacity-70">
-                        <div class="mb-0.5 font-medium">参数</div>
+                        <div class="mb-0.5 font-medium">{{ t('chat.args') }}</div>
                         <pre class="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/60 p-1.5 font-mono text-[10px]">{{ formatArgs(tc.arguments) }}</pre>
                       </div>
                       <div v-if="tc.error" class="text-[10px] text-red-500">
-                        <div class="mb-0.5 font-medium">错误</div>
+                        <div class="mb-0.5 font-medium">{{ t('chat.tool_error') }}</div>
                         <pre class="whitespace-pre-wrap break-all">{{ tc.error }}</pre>
                       </div>
                       <div v-else-if="tc.result" class="text-[10px] opacity-70">
-                        <div class="mb-0.5 font-medium">结果</div>
+                        <div class="mb-0.5 font-medium">{{ t('chat.tool_result') }}</div>
                         <pre class="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/60 p-1.5 font-mono text-[10px]">{{ formatResult(tc.result) }}</pre>
                       </div>
                     </div>
@@ -397,7 +397,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                 v-if="msg.rag && msg.rag.references.length"
                 class="mt-2 border-t border-border/40 pt-2"
               >
-                <div class="mb-1 text-[10px] opacity-70">引用文件</div>
+                <div class="mb-1 text-[10px] opacity-70">{{ t('chat.references') }}</div>
                 <div class="space-y-1">
                   <div
                     v-for="(ref, ridx) in msg.rag.references"
@@ -408,14 +408,14 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                     <span class="text-[10px] opacity-50">[{{ ridx + 1 }}]</span>
                     <button
                       class="rounded p-0.5 hover:bg-muted/80"
-                      title="打开"
+                      :title="t('filelist.open')"
                       @click="openFile(ref.path)"
                     >
                       <ExternalLink class="size-3" />
                     </button>
                     <button
                       class="rounded p-0.5 hover:bg-muted/80"
-                      title="在 Finder 中显示"
+                      :title="t('filelist.reveal')"
                       @click="revealInFinder(ref.path)"
                     >
                       <FolderOpen class="size-3" />
@@ -432,7 +432,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background px-3 py-1 text-[11px] shadow-md border border-border hover:bg-muted"
           @click="scrollToBottom"
         >
-          ↓ 回到底部
+          {{ t('chat.scroll_bottom') }}
         </button>
       </div>
     </div>
@@ -442,7 +442,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         <textarea
           ref="inputRef"
           v-model="input"
-          placeholder="问任何问题... (Enter 发送, Shift+Enter 换行)"
+          :placeholder="t('chat.placeholder')"
           rows="1"
           class="flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           style="min-height: 38px; max-height: 160px"
@@ -451,7 +451,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         <button
           v-if="chat.loading"
           class="flex items-center justify-center rounded-md bg-red-500/80 px-3 text-white hover:bg-red-500"
-          title="停止生成"
+          :title="t('chat.stop')"
           @click="onStop"
         >
           <Square class="size-3.5 fill-current" />
@@ -467,7 +467,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
       </div>
       <div class="mt-1.5 text-[10px] text-muted-foreground">
         <span v-if="chat.conversationId">对话 #{{ chat.conversationId }}</span>
-        <span v-else>新对话</span>
+        <span v-else>{{ t('chat.new_conv') }}</span>
       </div>
     </div>
 
@@ -479,19 +479,19 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         <div class="w-[420px] max-w-[90vw] rounded-lg border border-border bg-background p-4 shadow-2xl">
           <div class="mb-3 flex items-center gap-2">
             <AlertCircle class="size-5 text-yellow-500" />
-            <h3 class="text-sm font-semibold">Agent 请求执行写操作</h3>
+            <h3 class="text-sm font-semibold">{{ t('chat.confirm_title') }}</h3>
           </div>
           <div class="space-y-2 text-xs">
             <div>
-              <span class="opacity-70">工具：</span>
+              <span class="opacity-70">{{ t('chat.confirm_tool') }}:</span>
               <span class="font-mono">{{ chat.pendingConfirmations[0]?.name }}</span>
             </div>
             <div>
-              <div class="mb-1 opacity-70">参数：</div>
+              <div class="mb-1 opacity-70">{{ t('chat.confirm_args') }}:</div>
               <pre class="max-h-48 overflow-auto rounded bg-muted p-2 font-mono text-[11px] whitespace-pre-wrap break-all">{{ formatArgs(chat.pendingConfirmations[0]?.arguments || '') }}</pre>
             </div>
             <div class="rounded border border-yellow-500/30 bg-yellow-500/10 p-2 text-[11px] text-yellow-700 dark:text-yellow-300">
-              此操作将修改本地文件或数据库。确认前请核对参数（尤其是路径）。
+              {{ t('chat.confirm_warning') }}
             </div>
           </div>
           <div class="mt-4 flex justify-end gap-2">
@@ -499,17 +499,17 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
               class="rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:bg-muted"
               @click="onRespond(false)"
             >
-              拒绝
+              {{ t('chat.confirm_deny') }}
             </button>
             <button
               class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90"
               @click="onRespond(true)"
             >
-              确认执行
+              {{ t('chat.confirm_approve') }}
             </button>
           </div>
           <div class="mt-2 text-[10px] opacity-50">
-            待确认：{{ chat.pendingConfirmations?.length || 0 }} 个
+            {{ t('chat.confirm_pending', { count: chat.pendingConfirmations?.length || 0 }) }}
           </div>
         </div>
       </div>

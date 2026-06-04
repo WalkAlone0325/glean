@@ -11,6 +11,7 @@
   "sidebar": {
     "all_files": "All Files",
     "recent": "Recent",
+    "favorites": "Favorites",
     "indexed_folders": "Indexed Folders",
     "no_folders": "No folders indexed yet"
   },
@@ -46,6 +47,7 @@
   "filelist": {
     "all": "All Files",
     "recent": "Recent",
+    "favorites": "Favorites",
     "favorites": "Favorites",
     "empty_all": "No files yet",
     "empty_recent": "No recently viewed files",
@@ -138,6 +140,8 @@
     "presets": "Presets",
     "base_url": "Base URL",
     "api_key": "API Key",
+    "show_key": "Show",
+    "hide_key": "Hide",
     "model": "Model",
     "test": "Test Connection",
     "test_ok": "Connected. Reply: {reply}",

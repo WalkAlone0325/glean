@@ -11,6 +11,7 @@
   "sidebar": {
     "all_files": "所有文件",
     "recent": "最近查看",
+    "favorites": "星标文件",
     "indexed_folders": "已索引文件夹",
     "no_folders": "尚未索引任何文件夹"
   },
@@ -46,6 +47,7 @@
   "filelist": {
     "all": "全部文件",
     "recent": "最近查看",
+    "favorites": "星标文件",
     "favorites": "星标文件",
     "empty_all": "暂无文件",
     "empty_recent": "暂无最近查看的文件",
@@ -138,6 +140,8 @@
     "presets": "预设方案",
     "base_url": "Base URL",
     "api_key": "API Key",
+    "show_key": "显示",
+    "hide_key": "隐藏",
     "model": "Model",
     "test": "测试连通性",
     "test_ok": "连通成功，模型回复: {reply}",

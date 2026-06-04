@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play, MessageSquare } from "@lucide/vue";
+import { Search, Folder, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play, MessageSquare, Star, Clock } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
@@ -149,14 +149,43 @@ watch(() => app.locale, (loc) => {
       <div class="flex flex-1 overflow-hidden">
         <aside class="flex w-52 shrink-0 flex-col border-r border-border bg-muted/20">
           <nav class="space-y-0.5 p-2 pb-3 text-sm">
-            <a class="flex items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-1.5 font-medium text-primary">
+            <a
+              :class="[
+                'flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors',
+                !files.showRecent && !files.showFavorites
+                  ? 'bg-primary/10 font-medium text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              ]"
+              @click="files.setViewMode('all')"
+            >
               <Folder class="size-4" />
               {{ t('sidebar.all_files') }}
-              <span class="ml-auto text-xs tabular-nums text-primary/70">{{ app.stats.files }}</span>
+              <span class="ml-auto text-xs tabular-nums opacity-70">{{ app.stats.files }}</span>
             </a>
-            <a class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-              <FileText class="size-4" />
+            <a
+              :class="[
+                'flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors',
+                files.showRecent
+                  ? 'bg-primary/10 font-medium text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              ]"
+              @click="files.toggleRecent()"
+            >
+              <Clock class="size-4" />
               {{ t('sidebar.recent') }}
+            </a>
+            <a
+              :class="[
+                'flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 transition-colors',
+                files.showFavorites
+                  ? 'bg-primary/10 font-medium text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              ]"
+              @click="files.toggleFavorites()"
+            >
+              <Star class="size-4" />
+              {{ t('sidebar.favorites') }}
+              <span class="ml-auto text-xs tabular-nums opacity-70">{{ files.favoriteIds.size }}</span>
             </a>
           </nav>
           <div class="mx-3 border-t border-border" />
