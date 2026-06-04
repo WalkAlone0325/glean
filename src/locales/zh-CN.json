@@ -97,7 +97,8 @@
     "add_tag_failed": "添加标签失败",
     "remove_tag_failed": "移除标签失败",
     "close": "关闭",
-    "copied": "已复制路径"
+    "copied": "已复制路径",
+    "collapse": "展开详情面板"
   },
   "chat": {
     "title": "AI 助手",

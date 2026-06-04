@@ -97,7 +97,8 @@
     "add_tag_failed": "Failed to add tag",
     "remove_tag_failed": "Failed to remove tag",
     "close": "Close",
-    "copied": "Path copied"
+    "copied": "Path copied",
+    "collapse": "Expand detail panel"
   },
   "chat": {
     "title": "AI Assistant",

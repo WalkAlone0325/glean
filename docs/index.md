@@ -6,8 +6,8 @@ hero:
   text: 本地优先的 AI 文件管家
   tagline: 从散落的文件中拾取价值 — 找得到、记得住、自动归档
   image:
-    src: /icon.png
-    alt: Glean
+    src: /hero.png
+    alt: Glean 主界面
   actions:
     - theme: brand
       text: 下载 macOS

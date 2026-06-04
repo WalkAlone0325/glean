@@ -40,6 +40,27 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(240 5% 85%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(240 4% 70%);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(240 4% 25%);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(240 4% 40%);
+}
+
 @keyframes indeterminate {
   0% {
     transform: translateX(-100%);

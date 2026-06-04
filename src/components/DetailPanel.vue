@@ -234,7 +234,7 @@ watch(
           </div>
           <button
             class="rounded p-0.5 text-muted-foreground hover:bg-muted transition-colors"
-            :title="t('settings.close')"
+            :title="t('detail.close')"
             @click="emit('close')"
           >
             <X class="size-3.5" />

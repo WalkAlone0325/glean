@@ -39,6 +39,31 @@ Glean solves the **"I have 5000 files on my Mac, I know I've seen it, but I can'
 
 ---
 
+## 📸 Preview
+
+<p align="center">
+  <img src="./screenshots/hero.png" width="800" alt="Glean main interface" />
+</p>
+
+<p align="center">
+  <img src="./screenshots/demo.gif" width="800" alt="Glean demo" />
+</p>
+
+<details>
+<summary>📸 More screenshots</summary>
+
+| Search Palette | AI Assistant + Tool Calling |
+|:---:|:---:|
+| <img src="./screenshots/search.png" width="400" alt="Search" /> | <img src="./screenshots/chat-agent.png" width="400" alt="AI Assistant" /> |
+
+| Tag Management | Settings |
+|:---:|:---:|
+| <img src="./screenshots/tags.png" width="400" alt="Tags" /> | <img src="./screenshots/settings.png" width="400" alt="Settings" /> |
+
+</details>
+
+---
+
 ## 🛠 Tech Stack
 
 | Layer | Tech |

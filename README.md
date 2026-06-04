@@ -40,6 +40,31 @@ Glean 解决的是 **"我电脑里有 5000 个文件,我知道我看过,但我�
 
 ---
 
+## 📸 预览 / Preview
+
+<p align="center">
+  <img src="./screenshots/hero.png" width="800" alt="Glean 主界面" />
+</p>
+
+<p align="center">
+  <img src="./screenshots/demo.gif" width="800" alt="Glean 演示" />
+</p>
+
+<details>
+<summary>📸 更多截图</summary>
+
+| 搜索面板 | AI 助手 + 工具调用 |
+|:---:|:---:|
+| <img src="./screenshots/search.png" width="400" alt="搜索" /> | <img src="./screenshots/chat-agent.png" width="400" alt="AI 助手" /> |
+
+| 标签管理 | 设置页 |
+|:---:|:---:|
+| <img src="./screenshots/tags.png" width="400" alt="标签" /> | <img src="./screenshots/settings.png" width="400" alt="设置" /> |
+
+</details>
+
+---
+
 ## 🛠 技术栈 / Tech Stack
 
 | 层 | 技术 |
