@@ -315,13 +315,29 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                         v-if="tc.status === 'running'"
                         class="size-3 animate-spin text-muted-foreground"
                       />
+                      <Loader2
+                        v-else-if="tc.status === 'pending-confirm'"
+                        class="size-3 animate-spin text-yellow-500"
+                      />
                       <CheckCircle2
                         v-else-if="tc.status === 'ok'"
                         class="size-3 text-emerald-500"
                       />
+                      <AlertCircle
+                        v-else-if="tc.status === 'denied'"
+                        class="size-3 text-yellow-600"
+                      />
                       <AlertCircle v-else class="size-3 text-red-500" />
                       <span class="font-medium">{{ tc.name || "(unknown)" }}</span>
-                      <span v-if="tc.durationMs !== undefined" class="ml-auto text-[10px] opacity-60">
+                      <span
+                        v-if="tc.status === 'pending-confirm'"
+                        class="ml-auto text-[10px] text-yellow-600"
+                      >等待确认</span>
+                      <span
+                        v-else-if="tc.status === 'denied'"
+                        class="ml-auto text-[10px] text-yellow-600"
+                      >已拒绝</span>
+                      <span v-else-if="tc.durationMs !== undefined" class="ml-auto text-[10px] opacity-60">
                         {{ tc.durationMs }}ms
                       </span>
                     </summary>
@@ -424,5 +440,49 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         <span v-else>新对话</span>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="chat.pendingConfirmations.length"
+        class="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      >
+        <div class="w-[420px] max-w-[90vw] rounded-lg border border-border bg-background p-4 shadow-2xl">
+          <div class="mb-3 flex items-center gap-2">
+            <AlertCircle class="size-5 text-yellow-500" />
+            <h3 class="text-sm font-semibold">Agent 请求执行写操作</h3>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div>
+              <span class="opacity-70">工具：</span>
+              <span class="font-mono">{{ chat.pendingConfirmations[0]!.name }}</span>
+            </div>
+            <div>
+              <div class="mb-1 opacity-70">参数：</div>
+              <pre class="max-h-48 overflow-auto rounded bg-muted p-2 font-mono text-[11px] whitespace-pre-wrap break-all">{{ formatArgs(chat.pendingConfirmations[0]!.arguments) }}</pre>
+            </div>
+            <div class="rounded border border-yellow-500/30 bg-yellow-500/10 p-2 text-[11px] text-yellow-700 dark:text-yellow-300">
+              此操作将修改本地文件或数据库。确认前请核对参数（尤其是路径）。
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end gap-2">
+            <button
+              class="rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:bg-muted"
+              @click="chat.respondConfirmation(chat.pendingConfirmations[0]!.callId, false)"
+            >
+              拒绝
+            </button>
+            <button
+              class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90"
+              @click="chat.respondConfirmation(chat.pendingConfirmations[0]!.callId, true)"
+            >
+              确认执行
+            </button>
+          </div>
+          <div class="mt-2 text-[10px] opacity-50">
+            待确认：{{ chat.pendingConfirmations.length }} 个
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </aside>
 </template>

@@ -400,14 +400,16 @@ pub fn chat_stop() {
 pub async fn chat_send(
     app: AppHandle,
     db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    confirmations: State<'_, std::sync::Arc<crate::agent::ConfirmationRegistry>>,
     conversation_id: Option<i64>,
     message: String,
     use_rag: Option<bool>,
 ) -> Result<ChatStartResult, String> {
     let db = db.inner().clone();
+    let confirmations = confirmations.inner().clone();
     let use_rag = use_rag.unwrap_or(true);
     let (conv_id, msg_id, rag) =
-        crate::rag::run_chat(app, db, conversation_id, message, use_rag)
+        crate::rag::run_chat(app, db, confirmations, conversation_id, message, use_rag)
             .await
             .map_err(|e| e.to_string())?;
     Ok(ChatStartResult {
@@ -415,6 +417,16 @@ pub async fn chat_send(
         message_id: msg_id,
         rag_context: rag,
     })
+}
+
+#[tauri::command]
+pub async fn tool_confirm(
+    confirmations: State<'_, std::sync::Arc<crate::agent::ConfirmationRegistry>>,
+    call_id: String,
+    approved: bool,
+) -> Result<bool, String> {
+    confirmations.inner().resolve(&call_id, approved).await;
+    Ok(true)
 }
 
 #[derive(serde::Serialize)]

@@ -61,6 +61,7 @@ pub fn run() {
             commands::test_llm,
             commands::chat_send,
             commands::chat_stop,
+            commands::tool_confirm,
             commands::list_messages,
             commands::list_conversations,
             commands::delete_conversation,
@@ -136,8 +137,10 @@ fn init_db(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("database initialized at {}", db_path.display());
     let db_arc = std::sync::Arc::new(tokio::sync::Mutex::new(database));
     let scheduler = std::sync::Arc::new(scanner::Scheduler::new(db_arc.clone()));
+    let confirmations = std::sync::Arc::new(agent::ConfirmationRegistry::new());
     app.manage(db_arc);
     app.manage(scheduler);
+    app.manage(confirmations);
 
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {

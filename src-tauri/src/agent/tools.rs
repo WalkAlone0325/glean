@@ -304,3 +304,189 @@ impl Tool for ListSimilarTool {
         Ok(json!({ "results": results, "count": results.len() }).to_string())
     }
 }
+
+pub struct MoveFileTool {}
+
+impl MoveFileTool {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+#[derive(Deserialize)]
+struct MoveFileArgs {
+    src: String,
+    dst: String,
+    #[serde(default)]
+    overwrite: bool,
+}
+
+#[async_trait::async_trait]
+impl Tool for MoveFileTool {
+    fn definition(&self) -> ToolDefinition {
+        ToolDefinition {
+            name: "move_file".into(),
+            description:
+                "移动或重命名本地文件。源路径和目标路径必须是绝对路径。默认不覆盖已有文件。".into(),
+            parameters: schema(
+                json!({
+                    "src": {
+                        "type": "string",
+                        "description": "源文件绝对路径"
+                    },
+                    "dst": {
+                        "type": "string",
+                        "description": "目标路径（可为目标目录下的新文件名）"
+                    },
+                    "overwrite": {
+                        "type": "boolean",
+                        "description": "目标已存在时是否覆盖，默认 false",
+                        "default": false
+                    }
+                }),
+                &["src", "dst"],
+            ),
+        }
+    }
+
+    fn is_destructive(&self) -> bool {
+        true
+    }
+
+    async fn execute(&self, args: &str) -> Result<String> {
+        let parsed: MoveFileArgs = if args.trim().is_empty() {
+            return Err(anyhow!("missing src/dst"));
+        } else {
+            serde_json::from_str(args)?
+        };
+
+        let src = std::path::Path::new(&parsed.src);
+        let dst = std::path::Path::new(&parsed.dst);
+
+        if !src.exists() {
+            return Err(anyhow!("source not found: {}", parsed.src));
+        }
+        if !src.is_file() {
+            return Err(anyhow!("source is not a regular file: {}", parsed.src));
+        }
+        if dst.exists() && !parsed.overwrite {
+            return Err(anyhow!(
+                "destination already exists: {} (set overwrite=true to replace)",
+                parsed.dst
+            ));
+        }
+        if let Some(parent) = dst.parent() {
+            if !parent.as_os_str().is_empty() && !parent.exists() {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
+
+        let src_size = src.metadata()?.len();
+        std::fs::rename(src, dst)?;
+
+        Ok(json!({
+            "src": parsed.src,
+            "dst": parsed.dst,
+            "size": src_size,
+            "overwritten": parsed.overwrite && dst.exists(),
+        })
+        .to_string())
+    }
+}
+
+pub struct TagFileTool {
+    db: Arc<Mutex<Database>>,
+}
+
+impl TagFileTool {
+    pub fn new(db: Arc<Mutex<Database>>) -> Self {
+        Self { db }
+    }
+}
+
+#[derive(Deserialize)]
+struct TagFileArgs {
+    path: String,
+    tags: Vec<String>,
+}
+
+#[async_trait::async_trait]
+impl Tool for TagFileTool {
+    fn definition(&self) -> ToolDefinition {
+        ToolDefinition {
+            name: "tag_file".into(),
+            description: "为已索引的文件打上一个或多个标签。已存在的标签会复用，不会重复创建。".into(),
+            parameters: schema(
+                json!({
+                    "path": {
+                        "type": "string",
+                        "description": "文件绝对路径（必须已索引）"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "标签名列表"
+                    }
+                }),
+                &["path", "tags"],
+            ),
+        }
+    }
+
+    fn is_destructive(&self) -> bool {
+        true
+    }
+
+    async fn execute(&self, args: &str) -> Result<String> {
+        let parsed: TagFileArgs = if args.trim().is_empty() {
+            return Err(anyhow!("missing path/tags"));
+        } else {
+            serde_json::from_str(args)?
+        };
+
+        if parsed.tags.is_empty() {
+            return Err(anyhow!("tags must not be empty"));
+        }
+
+        let db_lock = self.db.lock().await;
+        let conn = db_lock.conn.lock().map_err(|e| anyhow!("db mutex: {}", e))?;
+
+        let file_id: i64 = conn
+            .query_row(
+                "SELECT id FROM files WHERE path = ?1 AND deleted_at IS NULL LIMIT 1",
+                rusqlite::params![&parsed.path],
+                |r| r.get(0),
+            )
+            .map_err(|_| anyhow!("file not indexed: {}", parsed.path))?;
+
+        let mut attached: Vec<String> = Vec::new();
+        for tag in &parsed.tags {
+            let trimmed = tag.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            conn.execute(
+                "INSERT OR IGNORE INTO tags (name) VALUES (?1)",
+                rusqlite::params![trimmed],
+            )?;
+            let tag_id: i64 = conn.query_row(
+                "SELECT id FROM tags WHERE name = ?1",
+                rusqlite::params![trimmed],
+                |r| r.get(0),
+            )?;
+            conn.execute(
+                "INSERT OR IGNORE INTO file_tags (file_id, tag_id) VALUES (?1, ?2)",
+                rusqlite::params![file_id, tag_id],
+            )?;
+            attached.push(trimmed.to_string());
+        }
+
+        Ok(json!({
+            "path": parsed.path,
+            "file_id": file_id,
+            "tags": attached,
+            "count": attached.len(),
+        })
+        .to_string())
+    }
+}

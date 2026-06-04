@@ -20,10 +20,18 @@ export interface ToolCallEntry {
   callId: string;
   name: string;
   arguments: string;
-  status: "running" | "ok" | "error";
+  status: "pending-confirm" | "running" | "ok" | "error" | "denied";
   result?: string;
   error?: string;
   durationMs?: number;
+}
+
+export interface PendingConfirmation {
+  callId: string;
+  conversationId: number;
+  messageId: number;
+  name: string;
+  arguments: string;
 }
 
 export interface ChatMessage {
@@ -50,11 +58,13 @@ export const useChatStore = defineStore("chat", () => {
   const conversations = ref<ConversationSummary[]>([]);
   const useRag = ref(true);
   const panelOpen = ref(false);
+  const pendingConfirmations = ref<PendingConfirmation[]>([]);
 
   let unlistenDelta: UnlistenFn | null = null;
   let unlistenDone: UnlistenFn | null = null;
   let unlistenToolCall: UnlistenFn | null = null;
   let unlistenToolResult: UnlistenFn | null = null;
+  let unlistenToolConfirm: UnlistenFn | null = null;
 
   const hasMessages = computed(() => messages.value.length > 0);
 
@@ -71,6 +81,18 @@ export const useChatStore = defineStore("chat", () => {
     if (!msg.toolCalls.find((t) => t.callId === callId)) {
       msg.toolCalls.push({ callId, name, arguments: args, status: "running" });
     }
+  }
+
+  function markToolPendingConfirm(msg: ChatMessage, callId: string) {
+    if (!msg.toolCalls) return;
+    const existing = msg.toolCalls.find((t) => t.callId === callId);
+    if (existing) existing.status = "pending-confirm";
+  }
+
+  function markToolDenied(msg: ChatMessage, callId: string) {
+    if (!msg.toolCalls) return;
+    const existing = msg.toolCalls.find((t) => t.callId === callId);
+    if (existing) existing.status = "denied";
   }
 
   function completeToolCall(
@@ -101,7 +123,7 @@ export const useChatStore = defineStore("chat", () => {
   }
 
   async function ensureListeners() {
-    if (unlistenDelta && unlistenDone && unlistenToolCall && unlistenToolResult) return;
+    if (unlistenDelta && unlistenDone && unlistenToolCall && unlistenToolResult && unlistenToolConfirm) return;
     unlistenDelta = await listen<{ conversation_id: number; message_id: number; delta: string }>(
       "chat-delta",
       (e) => {
@@ -148,6 +170,37 @@ export const useChatStore = defineStore("chat", () => {
       const target = findStreamingMessage();
       if (target) completeToolCall(target, call_id, result, error, duration_ms);
     });
+    unlistenToolConfirm = await listen<{
+      conversation_id: number;
+      message_id: number;
+      call_id: string;
+      name: string;
+      arguments: string;
+    }>("agent-tool-confirm", (e) => {
+      const { conversation_id, message_id, call_id, name, arguments: args } = e.payload;
+      const target = findStreamingMessage();
+      if (target) markToolPendingConfirm(target, call_id);
+      pendingConfirmations.value.push({
+        callId: call_id,
+        conversationId: conversation_id,
+        messageId: message_id,
+        name,
+        arguments: args,
+      });
+    });
+  }
+
+  async function respondConfirmation(callId: string, approved: boolean) {
+    pendingConfirmations.value = pendingConfirmations.value.filter((p) => p.callId !== callId);
+    if (!approved) {
+      const target = findStreamingMessage();
+      if (target) markToolDenied(target, callId);
+    }
+    try {
+      await invoke("tool_confirm", { callId, approved });
+    } catch (e) {
+      console.warn("tool_confirm failed:", e);
+    }
   }
 
   async function send(text: string) {
@@ -263,6 +316,7 @@ export const useChatStore = defineStore("chat", () => {
     useRag,
     panelOpen,
     hasMessages,
+    pendingConfirmations,
     send,
     stopGenerate,
     loadConversation,
@@ -272,5 +326,6 @@ export const useChatStore = defineStore("chat", () => {
     newConversation,
     togglePanel,
     ensureListeners,
+    respondConfirmation,
   };
 });

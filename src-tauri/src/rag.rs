@@ -1,4 +1,4 @@
-use crate::agent::ToolRegistry;
+use crate::agent::{ConfirmationRegistry, ToolRegistry};
 use crate::db::Database;
 use crate::llm::{openai::OpenAIProvider, ChatRequest, LLMProvider, Message, ProviderConfig};
 use crate::search::hybrid::hybrid_search;
@@ -251,6 +251,15 @@ struct AgentToolResultEvent {
     duration_ms: u64,
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct AgentToolConfirmEvent {
+    conversation_id: i64,
+    message_id: i64,
+    call_id: String,
+    name: String,
+    arguments: String,
+}
+
 fn build_system_prompt(rag_ctx: &Option<RagContext>) -> String {
     let mut sys = String::from(
         "你是 Glean 的文件助理，运行在用户的 macOS 设备上。你可以通过工具读取用户已索引的本地文件、检索内容、查找相似文件。\n\n\
@@ -271,6 +280,7 @@ fn build_system_prompt(rag_ctx: &Option<RagContext>) -> String {
 pub async fn run_chat(
     app: AppHandle,
     db: Arc<Mutex<Database>>,
+    confirmations: Arc<ConfirmationRegistry>,
     conversation_id: Option<i64>,
     user_message: String,
     use_rag: bool,
@@ -380,10 +390,38 @@ pub async fn run_chat(
                     };
                     let _ = app.emit("agent-tool-call", evt);
 
+                    let tool_ref = registry.get(&tc.name);
+                    let is_destructive = tool_ref.as_ref().map(|t| t.is_destructive()).unwrap_or(false);
+
                     let start = Instant::now();
-                    let exec_result = match registry.get(&tc.name) {
-                        Some(tool) => tool.execute(&tc.arguments).await,
-                        None => Err(anyhow::anyhow!("unknown tool: {}", tc.name)),
+                    let exec_result = if is_destructive {
+                        let confirm_evt = AgentToolConfirmEvent {
+                            conversation_id: conv_id,
+                            message_id: assistant_id,
+                            call_id: tc.id.clone(),
+                            name: tc.name.clone(),
+                            arguments: tc.arguments.clone(),
+                        };
+                        let _ = app.emit("agent-tool-confirm", confirm_evt);
+
+                        let rx = confirmations.register(tc.id.clone()).await;
+                        let approved = match rx.await {
+                            Ok(v) => v,
+                            Err(_) => false,
+                        };
+
+                        if !approved {
+                            Err(anyhow::anyhow!("user denied tool execution"))
+                        } else if let Some(tool) = tool_ref {
+                            tool.execute(&tc.arguments).await
+                        } else {
+                            Err(anyhow::anyhow!("unknown tool: {}", tc.name))
+                        }
+                    } else {
+                        match tool_ref {
+                            Some(tool) => tool.execute(&tc.arguments).await,
+                            None => Err(anyhow::anyhow!("unknown tool: {}", tc.name)),
+                        }
                     };
                     let duration = start.elapsed().as_millis() as u64;
 
