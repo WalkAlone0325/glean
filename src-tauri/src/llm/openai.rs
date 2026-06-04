@@ -1,10 +1,10 @@
-use super::{ChatRequest, ChatResponse, LLMProvider};
+use super::{ChatRequest, ChatResponse, LLMProvider, Message, ToolCall};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Map, Value};
 use std::time::Duration;
 
 pub struct OpenAIProvider {
@@ -31,18 +31,59 @@ impl OpenAIProvider {
 #[derive(Debug, Serialize)]
 struct OpenAIRequest<'a> {
     model: &'a str,
-    messages: Vec<OpenAIMessage<'a>>,
+    messages: Vec<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    tools: Vec<Value>,
     stream: bool,
 }
 
-#[derive(Debug, Serialize)]
-struct OpenAIMessage<'a> {
-    role: &'a str,
-    content: &'a str,
+fn message_to_openai(m: &Message) -> Value {
+    let mut obj = Map::new();
+    obj.insert("role".into(), Value::String(m.role.clone()));
+    if !m.content.is_empty() {
+        obj.insert("content".into(), Value::String(m.content.clone()));
+    } else {
+        obj.insert("content".into(), Value::Null);
+    }
+    if let Some(id) = &m.tool_call_id {
+        obj.insert("tool_call_id".into(), Value::String(id.clone()));
+    }
+    if let Some(name) = &m.name {
+        obj.insert("name".into(), Value::String(name.clone()));
+    }
+    if !m.tool_calls.is_empty() {
+        let arr: Vec<Value> = m
+            .tool_calls
+            .iter()
+            .map(|tc| {
+                json!({
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.name,
+                        "arguments": tc.arguments,
+                    }
+                })
+            })
+            .collect();
+        obj.insert("tool_calls".into(), Value::Array(arr));
+    }
+    Value::Object(obj)
+}
+
+fn tool_def_to_openai(td: &super::ToolDefinition) -> Value {
+    json!({
+        "type": "function",
+        "function": {
+            "name": td.name,
+            "description": td.description,
+            "parameters": td.parameters,
+        }
+    })
 }
 
 #[derive(Debug, Deserialize)]
@@ -55,11 +96,26 @@ struct OpenAIResponse {
 #[derive(Debug, Deserialize)]
 struct OpenAIChoice {
     message: Option<OpenAIMessageResp>,
+    finish_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct OpenAIMessageResp {
     content: Option<String>,
+    #[serde(default)]
+    tool_calls: Vec<OpenAIToolCallResp>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIToolCallResp {
+    id: String,
+    function: OpenAIToolFunctionResp,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIToolFunctionResp {
+    name: String,
+    arguments: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -68,24 +124,29 @@ struct OpenAIUsage {
     completion_tokens: Option<u32>,
 }
 
+fn parse_tool_calls(raw: &[OpenAIToolCallResp]) -> Vec<ToolCall> {
+    raw.iter()
+        .map(|tc| ToolCall {
+            id: tc.id.clone(),
+            name: tc.function.name.clone(),
+            arguments: tc.function.arguments.clone(),
+        })
+        .collect()
+}
+
 #[async_trait]
 impl LLMProvider for OpenAIProvider {
     async fn chat(&self, req: ChatRequest) -> Result<ChatResponse> {
-        let model = req.model.unwrap_or_else(|| self.model.clone());
-        let messages: Vec<OpenAIMessage> = req
-            .messages
-            .iter()
-            .map(|m| OpenAIMessage {
-                role: m.role.as_str(),
-                content: m.content.as_str(),
-            })
-            .collect();
+        let model = req.model.clone().unwrap_or_else(|| self.model.clone());
+        let messages: Vec<Value> = req.messages.iter().map(message_to_openai).collect();
+        let tools: Vec<Value> = req.tools.iter().map(tool_def_to_openai).collect();
 
         let body = OpenAIRequest {
             model: &model,
             messages,
             temperature: req.temperature,
             max_tokens: req.max_tokens,
+            tools,
             stream: false,
         };
 
@@ -107,13 +168,18 @@ impl LLMProvider for OpenAIProvider {
         let parsed: OpenAIResponse = serde_json::from_str(&text)
             .map_err(|e| anyhow!("parse response failed: {} (raw: {})", e, &text[..text.len().min(500)]))?;
 
-        let content = parsed
+        let choice = parsed
             .choices
             .into_iter()
             .next()
-            .and_then(|c| c.message)
-            .and_then(|m| m.content)
-            .unwrap_or_default();
+            .ok_or_else(|| anyhow!("no choices in response"))?;
+
+        let msg = choice.message.unwrap_or(OpenAIMessageResp {
+            content: None,
+            tool_calls: Vec::new(),
+        });
+        let content = msg.content.unwrap_or_default();
+        let tool_calls = parse_tool_calls(&msg.tool_calls);
 
         let (input_tokens, output_tokens) = parsed
             .usage
@@ -125,6 +191,8 @@ impl LLMProvider for OpenAIProvider {
             model: parsed.model.unwrap_or(model),
             input_tokens,
             output_tokens,
+            tool_calls,
+            finish_reason: choice.finish_reason,
         })
     }
 
@@ -133,21 +201,16 @@ impl LLMProvider for OpenAIProvider {
         req: ChatRequest,
         on_delta: Box<dyn Fn(String) + Send + Sync>,
     ) -> Result<ChatResponse> {
-        let model = req.model.unwrap_or_else(|| self.model.clone());
-        let messages: Vec<OpenAIMessage> = req
-            .messages
-            .iter()
-            .map(|m| OpenAIMessage {
-                role: m.role.as_str(),
-                content: m.content.as_str(),
-            })
-            .collect();
+        let model = req.model.clone().unwrap_or_else(|| self.model.clone());
+        let messages: Vec<Value> = req.messages.iter().map(message_to_openai).collect();
+        let tools: Vec<Value> = req.tools.iter().map(tool_def_to_openai).collect();
 
         let body = OpenAIRequest {
             model: &model,
             messages,
             temperature: req.temperature,
             max_tokens: req.max_tokens,
+            tools,
             stream: true,
         };
 
@@ -171,6 +234,8 @@ impl LLMProvider for OpenAIProvider {
         let mut full_content = String::new();
         let mut input_tokens: Option<u32> = None;
         let mut output_tokens: Option<u32> = None;
+        let mut finish_reason: Option<String> = None;
+        let mut tool_call_state: Vec<ToolCallAccumulator> = Vec::new();
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk?;
@@ -191,15 +256,39 @@ impl LLMProvider for OpenAIProvider {
                 let Ok(value): Result<Value, _> = serde_json::from_str(data) else {
                     continue;
                 };
-                let delta_owned: Option<String> = value["choices"][0]["delta"]["content"]
-                    .as_str()
-                    .map(|s| s.to_string());
-                if let Some(delta) = delta_owned {
-                    if !delta.is_empty() {
-                        full_content.push_str(&delta);
-                        on_delta(delta);
+
+                let delta = &value["choices"][0]["delta"];
+                let delta_text = delta["content"].as_str();
+                if let Some(s) = delta_text {
+                    if !s.is_empty() {
+                        full_content.push_str(s);
+                        on_delta(s.to_string());
                     }
                 }
+
+                if let Some(arr) = delta["tool_calls"].as_array() {
+                    for tc in arr {
+                        let idx = tc["index"].as_u64().unwrap_or(0) as usize;
+                        while tool_call_state.len() <= idx {
+                            tool_call_state.push(ToolCallAccumulator::default());
+                        }
+                        let slot = &mut tool_call_state[idx];
+                        if let Some(id) = tc["id"].as_str() {
+                            slot.id = id.to_string();
+                        }
+                        if let Some(name) = tc["function"]["name"].as_str() {
+                            slot.name = name.to_string();
+                        }
+                        if let Some(args) = tc["function"]["arguments"].as_str() {
+                            slot.arguments.push_str(args);
+                        }
+                    }
+                }
+
+                if let Some(reason) = value["choices"][0]["finish_reason"].as_str() {
+                    finish_reason = Some(reason.to_string());
+                }
+
                 if let Some(usage) = value.get("usage") {
                     if let Some(n) = usage["prompt_tokens"].as_u64() {
                         input_tokens = Some(n as u32);
@@ -211,15 +300,34 @@ impl LLMProvider for OpenAIProvider {
             }
         }
 
+        let tool_calls: Vec<ToolCall> = tool_call_state
+            .into_iter()
+            .filter(|t| !t.name.is_empty())
+            .map(|t| ToolCall {
+                id: t.id,
+                name: t.name,
+                arguments: t.arguments,
+            })
+            .collect();
+
         Ok(ChatResponse {
             content: full_content,
             model,
             input_tokens,
             output_tokens,
+            tool_calls,
+            finish_reason,
         })
     }
 
     fn name(&self) -> &str {
         "openai"
     }
+}
+
+#[derive(Default)]
+struct ToolCallAccumulator {
+    id: String,
+    name: String,
+    arguments: String,
 }

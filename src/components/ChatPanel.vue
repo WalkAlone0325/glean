@@ -15,6 +15,8 @@ import {
   Pencil,
   Check,
   Square,
+  CheckCircle2,
+  AlertCircle,
 } from "@lucide/vue";
 import { renderMarkdown } from "../utils/markdown";
 import "highlight.js/styles/github-dark.css";
@@ -115,6 +117,25 @@ function revealInFinder(path: string) {
 
 function assistantHtml(content: string): string {
   return renderMarkdown(content);
+}
+
+function formatArgs(raw: string): string {
+  if (!raw) return "";
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+}
+
+function formatResult(raw: string): string {
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return raw;
+  }
 }
 
 function formatTime(ts: number): string {
@@ -279,7 +300,49 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
               ]"
             >
               <div v-if="userBubble(msg)" class="whitespace-pre-wrap">{{ msg.content }}</div>
-              <div v-else class="markdown-body" v-html="assistantHtml(msg.content)" />
+              <template v-else>
+                <div
+                  v-if="msg.toolCalls && msg.toolCalls.length"
+                  class="mb-2 space-y-1.5"
+                >
+                  <details
+                    v-for="(tc, tidx) in msg.toolCalls"
+                    :key="tidx"
+                    class="rounded border border-border/60 bg-background/40 text-[11px]"
+                  >
+                    <summary class="flex cursor-pointer items-center gap-1.5 px-2 py-1 hover:bg-muted/40">
+                      <Loader2
+                        v-if="tc.status === 'running'"
+                        class="size-3 animate-spin text-muted-foreground"
+                      />
+                      <CheckCircle2
+                        v-else-if="tc.status === 'ok'"
+                        class="size-3 text-emerald-500"
+                      />
+                      <AlertCircle v-else class="size-3 text-red-500" />
+                      <span class="font-medium">{{ tc.name || "(unknown)" }}</span>
+                      <span v-if="tc.durationMs !== undefined" class="ml-auto text-[10px] opacity-60">
+                        {{ tc.durationMs }}ms
+                      </span>
+                    </summary>
+                    <div class="space-y-1 border-t border-border/40 px-2 py-1.5">
+                      <div v-if="tc.arguments" class="text-[10px] opacity-70">
+                        <div class="mb-0.5 font-medium">参数</div>
+                        <pre class="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/60 p-1.5 font-mono text-[10px]">{{ formatArgs(tc.arguments) }}</pre>
+                      </div>
+                      <div v-if="tc.error" class="text-[10px] text-red-500">
+                        <div class="mb-0.5 font-medium">错误</div>
+                        <pre class="whitespace-pre-wrap break-all">{{ tc.error }}</pre>
+                      </div>
+                      <div v-else-if="tc.result" class="text-[10px] opacity-70">
+                        <div class="mb-0.5 font-medium">结果</div>
+                        <pre class="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/60 p-1.5 font-mono text-[10px]">{{ formatResult(tc.result) }}</pre>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+                <div class="markdown-body" v-html="assistantHtml(msg.content)" />
+              </template>
               <Loader2
                 v-if="msg.streaming"
                 class="ml-1 inline-block size-3 animate-spin align-text-bottom"

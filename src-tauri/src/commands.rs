@@ -537,13 +537,11 @@ pub async fn test_llm(
     let provider = OpenAIProvider::new(&cfg.base_url, &cfg.api_key, &cfg.model);
     let resp = provider
         .chat(ChatRequest {
-            messages: vec![crate::llm::Message {
-                role: "user".to_string(),
-                content: "回复\"OK\"两个字符".to_string(),
-            }],
+            messages: vec![crate::llm::Message::user("回复\"OK\"两个字符")],
             model: None,
             temperature: Some(0.0),
             max_tokens: Some(10),
+            tools: Vec::new(),
         })
         .await
         .map_err(|e| e.to_string())?;

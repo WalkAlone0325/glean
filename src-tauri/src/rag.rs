@@ -1,3 +1,4 @@
+use crate::agent::ToolRegistry;
 use crate::db::Database;
 use crate::llm::{openai::OpenAIProvider, ChatRequest, LLMProvider, Message, ProviderConfig};
 use crate::search::hybrid::hybrid_search;
@@ -7,6 +8,7 @@ use rusqlite::params;
 use serde::Serialize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Instant;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 
@@ -216,6 +218,9 @@ pub async fn load_history(
         Ok(Message {
             role: r.get::<_, String>(0)?,
             content: r.get::<_, String>(1)?,
+            tool_calls: Vec::new(),
+            tool_call_id: None,
+            name: None,
         })
     })?;
     let mut out = Vec::new();
@@ -223,6 +228,44 @@ pub async fn load_history(
         out.push(r?);
     }
     Ok(out)
+}
+
+const MAX_AGENT_ITERATIONS: usize = 5;
+
+#[derive(Debug, Clone, Serialize)]
+struct AgentToolCallEvent {
+    conversation_id: i64,
+    message_id: i64,
+    call_id: String,
+    name: String,
+    arguments: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct AgentToolResultEvent {
+    conversation_id: i64,
+    message_id: i64,
+    call_id: String,
+    result: String,
+    error: Option<String>,
+    duration_ms: u64,
+}
+
+fn build_system_prompt(rag_ctx: &Option<RagContext>) -> String {
+    let mut sys = String::from(
+        "你是 Glean 的文件助理，运行在用户的 macOS 设备上。你可以通过工具读取用户已索引的本地文件、检索内容、查找相似文件。\n\n\
+         工具使用准则：\n\
+         - 优先使用 search_files 检索相关文件，再用 read_file 查看具体内容。\n\
+         - 如果用户问的是某个已知路径的相关文件，使用 list_similar。\n\
+         - 工具结果中的 mtime 是 Unix 时间戳（秒）。\n\
+         - 回答用中文，引用文件路径时使用完整路径。\n\
+         - 如果工具返回 0 条结果，明确告诉用户没找到，不要编造。",
+    );
+    if let Some(rag) = rag_ctx {
+        sys.push_str("\n\n[检索到的相关上下文]\n");
+        sys.push_str(&rag.augmented_query);
+    }
+    sys
 }
 
 pub async fn run_chat(
@@ -246,71 +289,141 @@ pub async fn run_chat(
         None
     };
 
-    let mut history = load_history(&db, conv_id).await?;
-    if let Some(rag) = &rag_ctx {
-        if let Some(last) = history.last_mut() {
-            if last.role == "user" {
-                last.content = rag.augmented_query.clone();
-            }
-        }
-    }
+    let history = load_history(&db, conv_id).await?;
+    let system_msg = Message::system(build_system_prompt(&rag_ctx));
 
     let provider = build_provider(&cfg);
+    let registry = ToolRegistry::new(db.clone());
+    let tool_defs = registry.definitions();
+
     let assistant_id = append_message(&db, conv_id, "assistant", "").await?;
 
     reset_stop();
 
-    let chunk_event = ChatChunkEvent {
-        conversation_id: conv_id,
-        message_id: assistant_id,
-        delta: String::new(),
-    };
-    let done_event = ChatDoneEvent {
-        conversation_id: conv_id,
-        message_id: assistant_id,
-        input_tokens: None,
-        output_tokens: None,
-        error: None,
-    };
+    let mut messages: Vec<Message> = vec![system_msg];
+    messages.extend(history);
 
-    let app_clone = app.clone();
-    let req = ChatRequest {
-        messages: history,
-        model: None,
-        temperature: Some(0.3),
-        max_tokens: Some(2048),
-    };
-
-    let result = provider
-        .chat_stream(req, Box::new(move |delta: String| {
-            if is_stopped() {
-                return;
-            }
-            let evt = ChatChunkEvent {
-                conversation_id: chunk_event.conversation_id,
-                message_id: chunk_event.message_id,
-                delta,
-            };
-            let _ = app_clone.emit("chat-delta", evt);
-        }))
-        .await;
-
-    let stopped = is_stopped();
-
-    let final_content;
-    let mut input_tokens = None;
-    let mut output_tokens = None;
+    let mut final_content = String::new();
+    let mut total_input_tokens: Option<u32> = None;
+    let mut total_output_tokens: Option<u32> = None;
     let mut err: Option<String> = None;
+    let mut stopped = false;
 
-    match result {
-        Ok(resp) => {
-            final_content = resp.content;
-            input_tokens = resp.input_tokens;
-            output_tokens = resp.output_tokens;
+    for iteration in 0..MAX_AGENT_ITERATIONS {
+        if is_stopped() {
+            stopped = true;
+            break;
         }
-        Err(e) => {
-            err = Some(e.to_string());
-            final_content = format!("[错误] {}", err.as_ref().unwrap());
+
+        let req = ChatRequest {
+            messages: messages.clone(),
+            model: None,
+            temperature: Some(0.3),
+            max_tokens: Some(2048),
+            tools: tool_defs.clone(),
+        };
+
+        let app_clone = app.clone();
+        let assistant_id_for_cb = assistant_id;
+        let conv_id_for_cb = conv_id;
+        let is_first_iteration = iteration == 0;
+
+        let result = provider
+            .chat_stream(req, Box::new(move |delta: String| {
+                if is_stopped() {
+                    return;
+                }
+                if !is_first_iteration {
+                    return;
+                }
+                let evt = ChatChunkEvent {
+                    conversation_id: conv_id_for_cb,
+                    message_id: assistant_id_for_cb,
+                    delta,
+                };
+                let _ = app_clone.emit("chat-delta", evt);
+            }))
+            .await;
+
+        match result {
+            Ok(resp) => {
+                if let Some(n) = resp.input_tokens {
+                    total_input_tokens = Some(total_input_tokens.unwrap_or(0) + n);
+                }
+                if let Some(n) = resp.output_tokens {
+                    total_output_tokens = Some(total_output_tokens.unwrap_or(0) + n);
+                }
+
+                if resp.tool_calls.is_empty() {
+                    final_content = resp.content;
+                    break;
+                }
+
+                let assistant_msg = Message::assistant_with_tools(resp.content.clone(), resp.tool_calls.clone());
+                messages.push(assistant_msg);
+
+                if !resp.content.is_empty() && iteration == 0 {
+                    final_content = resp.content.clone();
+                }
+
+                for tc in &resp.tool_calls {
+                    if is_stopped() {
+                        stopped = true;
+                        break;
+                    }
+                    let evt = AgentToolCallEvent {
+                        conversation_id: conv_id,
+                        message_id: assistant_id,
+                        call_id: tc.id.clone(),
+                        name: tc.name.clone(),
+                        arguments: tc.arguments.clone(),
+                    };
+                    let _ = app.emit("agent-tool-call", evt);
+
+                    let start = Instant::now();
+                    let exec_result = match registry.get(&tc.name) {
+                        Some(tool) => tool.execute(&tc.arguments).await,
+                        None => Err(anyhow::anyhow!("unknown tool: {}", tc.name)),
+                    };
+                    let duration = start.elapsed().as_millis() as u64;
+
+                    let (result_str, error_str) = match exec_result {
+                        Ok(s) => (s, None),
+                        Err(e) => (String::new(), Some(e.to_string())),
+                    };
+
+                    let result_evt = AgentToolResultEvent {
+                        conversation_id: conv_id,
+                        message_id: assistant_id,
+                        call_id: tc.id.clone(),
+                        result: truncate_tool(&result_str, 4000),
+                        error: error_str.clone(),
+                        duration_ms: duration,
+                    };
+                    let _ = app.emit("agent-tool-result", result_evt);
+
+                    let tool_msg_content = if let Some(e) = &error_str {
+                        format!("{{\"error\": \"{}\"}}", e.replace('"', "\\\""))
+                    } else {
+                        result_str.clone()
+                    };
+                    messages.push(Message::tool_result(&tc.id, tool_msg_content));
+                }
+            }
+            Err(e) => {
+                err = Some(e.to_string());
+                break;
+            }
+        }
+
+        if iteration == MAX_AGENT_ITERATIONS - 1 {
+            err = Some("agent loop exceeded max iterations".into());
+        }
+    }
+
+    if final_content.is_empty() {
+        if let Some(e) = &err {
+            final_content = format!("[错误] {}", e);
         }
     }
 
@@ -320,14 +433,16 @@ pub async fn run_chat(
         if let Ok(conn) = conn_guard {
             let _ = conn.execute(
                 "UPDATE messages SET content = ?1, tokens = ?2 WHERE id = ?3",
-                params![&final_content, output_tokens, assistant_id],
+                params![&final_content, total_output_tokens, assistant_id],
             );
         }
     }
 
     let done = ChatDoneEvent {
-        input_tokens,
-        output_tokens,
+        conversation_id: conv_id,
+        message_id: assistant_id,
+        input_tokens: total_input_tokens,
+        output_tokens: total_output_tokens,
         error: err.clone().or_else(|| {
             if stopped {
                 Some("stopped".to_string())
@@ -335,9 +450,20 @@ pub async fn run_chat(
                 None
             }
         }),
-        ..done_event
     };
     let _ = app.emit("chat-done", done);
 
     Ok((conv_id, assistant_id, rag_ctx))
+}
+
+fn truncate_tool(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        s.to_string()
+    } else {
+        let mut cut = max;
+        while !s.is_char_boundary(cut) && cut > 0 {
+            cut -= 1;
+        }
+        format!("{}...[truncated]", &s[..cut])
+    }
 }

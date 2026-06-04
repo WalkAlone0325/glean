@@ -16,12 +16,23 @@ export interface RagContext {
   references: RagReference[];
 }
 
+export interface ToolCallEntry {
+  callId: string;
+  name: string;
+  arguments: string;
+  status: "running" | "ok" | "error";
+  result?: string;
+  error?: string;
+  durationMs?: number;
+}
+
 export interface ChatMessage {
   id?: number;
   role: "user" | "assistant" | "system";
   content: string;
   rag?: RagContext | null;
   streaming?: boolean;
+  toolCalls?: ToolCallEntry[];
 }
 
 export interface ConversationSummary {
@@ -42,6 +53,8 @@ export const useChatStore = defineStore("chat", () => {
 
   let unlistenDelta: UnlistenFn | null = null;
   let unlistenDone: UnlistenFn | null = null;
+  let unlistenToolCall: UnlistenFn | null = null;
+  let unlistenToolResult: UnlistenFn | null = null;
 
   const hasMessages = computed(() => messages.value.length > 0);
 
@@ -53,8 +66,42 @@ export const useChatStore = defineStore("chat", () => {
     return null;
   }
 
+  function pushToolCall(msg: ChatMessage, callId: string, name: string, args: string) {
+    if (!msg.toolCalls) msg.toolCalls = [];
+    if (!msg.toolCalls.find((t) => t.callId === callId)) {
+      msg.toolCalls.push({ callId, name, arguments: args, status: "running" });
+    }
+  }
+
+  function completeToolCall(
+    msg: ChatMessage,
+    callId: string,
+    result: string,
+    error: string | null,
+    durationMs: number,
+  ) {
+    if (!msg.toolCalls) msg.toolCalls = [];
+    const existing = msg.toolCalls.find((t) => t.callId === callId);
+    if (existing) {
+      existing.status = error ? "error" : "ok";
+      existing.result = result;
+      existing.error = error || undefined;
+      existing.durationMs = durationMs;
+    } else {
+      msg.toolCalls.push({
+        callId,
+        name: "",
+        arguments: "",
+        status: error ? "error" : "ok",
+        result,
+        error: error || undefined,
+        durationMs,
+      });
+    }
+  }
+
   async function ensureListeners() {
-    if (unlistenDelta && unlistenDone) return;
+    if (unlistenDelta && unlistenDone && unlistenToolCall && unlistenToolResult) return;
     unlistenDelta = await listen<{ conversation_id: number; message_id: number; delta: string }>(
       "chat-delta",
       (e) => {
@@ -77,6 +124,29 @@ export const useChatStore = defineStore("chat", () => {
         target.streaming = false;
         if (err) error.value = err;
       }
+    });
+    unlistenToolCall = await listen<{
+      conversation_id: number;
+      message_id: number;
+      call_id: string;
+      name: string;
+      arguments: string;
+    }>("agent-tool-call", (e) => {
+      const { call_id, name, arguments: args } = e.payload;
+      const target = findStreamingMessage();
+      if (target) pushToolCall(target, call_id, name, args);
+    });
+    unlistenToolResult = await listen<{
+      conversation_id: number;
+      message_id: number;
+      call_id: string;
+      result: string;
+      error: string | null;
+      duration_ms: number;
+    }>("agent-tool-result", (e) => {
+      const { call_id, result, error, duration_ms } = e.payload;
+      const target = findStreamingMessage();
+      if (target) completeToolCall(target, call_id, result, error, duration_ms);
     });
   }
 

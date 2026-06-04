@@ -6,6 +6,7 @@ use tauri::{
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
+mod agent;
 mod commands;
 mod db;
 mod embedding;
