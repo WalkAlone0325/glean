@@ -138,6 +138,12 @@ function formatResult(raw: string): string {
   }
 }
 
+function onRespond(approved: boolean) {
+  const first = chat.pendingConfirmations?.[0];
+  if (!first) return;
+  chat.respondConfirmation(first.callId, approved);
+}
+
 function formatTime(ts: number): string {
   if (!ts) return "";
   const d = new Date(ts * 1000);
@@ -443,7 +449,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
 
     <Teleport to="body">
       <div
-        v-if="chat.pendingConfirmations.length"
+        v-if="chat.pendingConfirmations && chat.pendingConfirmations.length"
         class="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm"
       >
         <div class="w-[420px] max-w-[90vw] rounded-lg border border-border bg-background p-4 shadow-2xl">
@@ -454,11 +460,11 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           <div class="space-y-2 text-xs">
             <div>
               <span class="opacity-70">工具：</span>
-              <span class="font-mono">{{ chat.pendingConfirmations[0]!.name }}</span>
+              <span class="font-mono">{{ chat.pendingConfirmations[0]?.name }}</span>
             </div>
             <div>
               <div class="mb-1 opacity-70">参数：</div>
-              <pre class="max-h-48 overflow-auto rounded bg-muted p-2 font-mono text-[11px] whitespace-pre-wrap break-all">{{ formatArgs(chat.pendingConfirmations[0]!.arguments) }}</pre>
+              <pre class="max-h-48 overflow-auto rounded bg-muted p-2 font-mono text-[11px] whitespace-pre-wrap break-all">{{ formatArgs(chat.pendingConfirmations[0]?.arguments || '') }}</pre>
             </div>
             <div class="rounded border border-yellow-500/30 bg-yellow-500/10 p-2 text-[11px] text-yellow-700 dark:text-yellow-300">
               此操作将修改本地文件或数据库。确认前请核对参数（尤其是路径）。
@@ -467,19 +473,19 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           <div class="mt-4 flex justify-end gap-2">
             <button
               class="rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:bg-muted"
-              @click="chat.respondConfirmation(chat.pendingConfirmations[0]!.callId, false)"
+              @click="onRespond(false)"
             >
               拒绝
             </button>
             <button
               class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90"
-              @click="chat.respondConfirmation(chat.pendingConfirmations[0]!.callId, true)"
+              @click="onRespond(true)"
             >
               确认执行
             </button>
           </div>
           <div class="mt-2 text-[10px] opacity-50">
-            待确认：{{ chat.pendingConfirmations.length }} 个
+            待确认：{{ chat.pendingConfirmations?.length || 0 }} 个
           </div>
         </div>
       </div>
