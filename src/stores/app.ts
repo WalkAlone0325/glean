@@ -37,7 +37,7 @@ export const useAppStore = defineStore(
           invoke<string[]>("get_indexed_roots").catch(() => [] as string[]),
         ]);
         stats.value = s;
-        if (roots.length > 0) {
+        if (roots.length > 0 && indexedFolders.value.length === 0) {
           indexedFolders.value = roots;
         }
       } catch (e) {
@@ -49,12 +49,6 @@ export const useAppStore = defineStore(
 
     async function refreshStats() {
       stats.value = await invoke<Stats>("get_stats");
-      try {
-        const roots = await invoke<string[]>("get_indexed_roots");
-        if (roots.length > 0) indexedFolders.value = roots;
-      } catch {
-        /* ignore */
-      }
     }
 
     function updateEmbedding(p: EmbedProgress) {

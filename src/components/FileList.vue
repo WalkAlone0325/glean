@@ -12,6 +12,8 @@ import ContextMenu from "./ContextMenu.vue";
 const { t } = useI18n();
 const store = useFilesStore();
 const toast = useToastStore();
+
+const props = defineProps<{ indexing?: boolean }>();
 const containerRef = useTemplateRef<HTMLDivElement>("containerRef");
 const hoverId = ref<number | null>(null);
 const ctxMenu = ref<{ x: number; y: number; fileId: number } | null>(null);
@@ -168,6 +170,13 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       >
         <Loader2 class="size-5 animate-spin" />
         <span class="text-xs">{{ t('filelist.preview_loading') }}</span>
+      </div>
+      <div
+        v-else-if="props.indexing && !store.filtered.length"
+        class="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground"
+      >
+        <Loader2 class="size-6 animate-spin" />
+        <span class="text-sm">{{ t('filelist.indexing_in_progress') }}</span>
       </div>
       <div v-else-if="store.error" class="px-3 py-6 text-sm text-red-500">
         {{ store.error }}

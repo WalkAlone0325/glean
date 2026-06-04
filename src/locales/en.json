@@ -77,6 +77,7 @@
     "no_preview": "Select a file to view details",
     "no_preview_type": "Preview not available for this type. Click Open to view.",
     "preview_loading": "Loading...",
+    "indexing_in_progress": "Indexing files in progress...",
     "preview_error": "No preview"
   },
   "detail": {
@@ -172,6 +173,8 @@
     "index_failed": "Failed to start: {msg}",
     "index_cancel_failed": "Cancel failed: {msg}",
     "index_dirs": "Indexed directories",
+    "index_remove": "Remove",
+    "index_removed": "Removed directory and its files",
     "stats": "Statistics",
     "stats_files": "Files",
     "stats_chunks": "Chunks",

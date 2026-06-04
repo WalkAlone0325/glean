@@ -1,16 +1,28 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { homeDir } from "@tauri-apps/api/path";
+import { useAppStore } from "../stores/app";
 import { useFilesStore } from "../stores/files";
 
 const { t } = useI18n();
 const emit = defineEmits<{ close: [] }>();
 
+const app = useAppStore();
 const files = useFilesStore();
 const step = ref<"welcome" | "folders" | "done">("welcome");
-const folders = ref<string[]>(["~/Documents", "~/Downloads", "~/Desktop"]);
+const folders = ref<string[]>([]);
+
+onMounted(async () => {
+  const h = await homeDir();
+  folders.value = [
+    `${h}/Desktop`,
+    `${h}/Downloads`,
+    `${h}/Documents`,
+  ];
+});
 const indexing = ref(false);
 
 async function onNext() {
@@ -18,7 +30,11 @@ async function onNext() {
     step.value = "folders";
   } else if (step.value === "folders") {
     indexing.value = true;
-    await invoke("start_indexing");
+    const paths = folders.value.filter(Boolean);
+    if (paths.length) {
+      await invoke("start_indexing", { paths });
+      app.indexedFolders = Array.from(new Set([...(app.indexedFolders || []), ...paths]));
+    }
     step.value = "done";
     files.reload();
   } else {

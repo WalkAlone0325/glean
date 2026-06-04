@@ -10,6 +10,7 @@ import { onClickOutside, useMagicKeys, whenever } from "@vueuse/core";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettingsStore, providerPresets } from "../stores/settings";
 import { useAppStore } from "../stores/app";
+import { useFilesStore } from "../stores/files";
 import { useToastStore } from "../stores/toast";
 
 const { t } = useI18n();
@@ -17,6 +18,7 @@ const emit = defineEmits<{ close: [] }>();
 
 const settings = useSettingsStore();
 const app = useAppStore();
+const files = useFilesStore();
 const toast = useToastStore();
 const root = ref<HTMLElement | null>(null);
 const showKey = ref(false);
@@ -26,7 +28,6 @@ const saving = ref(false);
 const currentTab = ref("provider");
 
 const stats = reactive({ files: 0, chunks: 0, tags: 0 });
-const indexedRoots = ref<string[]>([]);
 const indexing = ref(false);
 const paused = ref(false);
 
@@ -47,7 +48,6 @@ whenever(keys.escape, () => emit("close"));
 onMounted(async () => {
   settings.load();
   await loadStats();
-  await loadIndexedRoots();
   await loadIndexStatus();
   await loadIgnoreRules();
 });
@@ -61,10 +61,20 @@ async function loadStats() {
   } catch { /* ignore */ }
 }
 
-async function loadIndexedRoots() {
+const removingRoot = ref<string | null>(null);
+
+async function onRemoveRoot(root: string) {
+  removingRoot.value = root;
   try {
-    indexedRoots.value = await invoke<string[]>("get_indexed_roots");
-  } catch { /* ignore */ }
+    await invoke("remove_indexed_root", { root });
+    app.indexedFolders = app.indexedFolders.filter((r) => r !== root);
+    await Promise.all([app.refreshStats(), files.reload()]);
+    toast.success(t('settings.index_removed'));
+  } catch (e) {
+    toast.error(String(e));
+  } finally {
+    removingRoot.value = null;
+  }
 }
 
 async function loadIndexStatus() {
@@ -76,7 +86,9 @@ async function loadIndexStatus() {
 
 async function onStartIndex() {
   try {
-    await invoke("start_indexing");
+    const paths = app.indexedFolders.length ? app.indexedFolders : [];
+    if (!paths.length) return;
+    await invoke("start_indexing", { paths });
     indexing.value = true;
     paused.value = false;
     toast.success(t('settings.index_started'));
@@ -351,13 +363,20 @@ const shortcuts = [
                 </button>
               </div>
 
-              <div v-if="indexedRoots.length" class="space-y-1">
+              <div v-if="app.indexedFolders.length" class="space-y-1">
                 <div class="text-xs font-medium text-muted-foreground/70">{{ t('settings.index_dirs') }}:</div>
                 <div
-                  v-for="r in indexedRoots" :key="r"
-                  class="rounded-md bg-muted/30 px-2.5 py-1 font-mono text-[11px] text-muted-foreground/70 truncate"
+                  v-for="r in app.indexedFolders" :key="r"
+                  class="group flex items-center gap-2 rounded-md bg-muted/30 px-2.5 py-1"
                 >
-                  {{ r }}
+                  <span class="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground/70">{{ r }}</span>
+                  <button
+                    class="shrink-0 rounded px-1.5 py-0.5 text-[10px] text-destructive opacity-0 hover:bg-destructive/10 group-hover:opacity-100 transition-opacity disabled:opacity-40"
+                    :disabled="removingRoot === r"
+                    @click="onRemoveRoot(r)"
+                  >
+                    {{ removingRoot === r ? '...' : t('settings.index_remove') }}
+                  </button>
                 </div>
               </div>
             </div>

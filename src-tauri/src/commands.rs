@@ -272,7 +272,6 @@ pub async fn list_recent_files(
 }
 
 #[tauri::command]
-#[tauri::command]
 pub fn remove_indexed_root(
     db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
     root: String,
@@ -295,22 +294,22 @@ pub fn get_indexed_roots(
     let db = db.blocking_lock();
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare(
-            "SELECT substr(path, 1, instr(substr(path, 2), '/') + 1) AS root
-             FROM files
-             WHERE deleted_at IS NULL
-             GROUP BY root
-             ORDER BY COUNT(*) DESC",
-        )
+        .prepare("SELECT DISTINCT path FROM files WHERE deleted_at IS NULL")
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |r| r.get::<_, String>(0))
         .map_err(|e| e.to_string())?;
-    let mut out = Vec::new();
+    let mut dirs: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
     for r in rows {
-        out.push(r.map_err(|e| e.to_string())?);
+        let path = r.map_err(|e| e.to_string())?;
+        if let Some(parent) = std::path::Path::new(&path).parent() {
+            let parent_str = parent.to_string_lossy().to_string();
+            if !parent_str.is_empty() && parent_str != "/" {
+                dirs.insert(parent_str);
+            }
+        }
     }
-    Ok(out)
+    Ok(dirs.into_iter().collect())
 }
 
 #[derive(serde::Serialize)]

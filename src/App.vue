@@ -403,7 +403,7 @@ function selectTag(tagName: string | null) {
 
           <div class="flex flex-1 overflow-hidden">
             <div class="flex-1 overflow-hidden">
-              <FileList />
+              <FileList :indexing="indexing" />
             </div>
             <DetailPanel v-if="!detailCollapsed" @close="detailCollapsed = true" />
             <ChatPanel />
