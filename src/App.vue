@@ -104,6 +104,17 @@ onMounted(async () => {
       app.refreshStats();
     }
   });
+
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+      e.preventDefault();
+      showSettings.value = !showSettings.value;
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+      e.preventDefault();
+      chat.panelOpen = !chat.panelOpen;
+    }
+  });
 });
 
 watch(
@@ -407,14 +418,7 @@ function selectTag(tagName: string | null) {
             </div>
             <DetailPanel v-if="!detailCollapsed" @close="detailCollapsed = true" />
             <ChatPanel />
-            <div
-              v-if="detailCollapsed && !chat.panelOpen"
-              class="flex w-7 shrink-0 cursor-pointer items-end justify-center border-l border-border bg-muted/30 pb-3 transition-colors hover:bg-muted/50"
-              :title="t('detail.collapse')"
-              @click="detailCollapsed = false"
-            >
-              <PanelLeftOpen class="size-5 text-muted-foreground rotate-180" />
-            </div>
+
           </div>
         </template>
       </main>
@@ -423,6 +427,6 @@ function selectTag(tagName: string | null) {
     <SearchPalette />
     <ToastHost />
     <SettingsModal v-if="showSettings" @close="showSettings = false" />
-    <OnboardingWizard v-if="app.ready && app.isFirstRun" @close="showFirstRun = false" />
+    <OnboardingWizard v-if="app.ready && app.isFirstRun" @close="showFirstRun = false" @indexing-started="indexing = true" />
   </div>
 </template>

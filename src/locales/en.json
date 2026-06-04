@@ -193,6 +193,7 @@
     "shortcut_open": "Open file / Send message",
     "shortcut_esc": "Close panel/dialog",
     "shortcut_chat": "Toggle chat panel",
+    "shortcut_settings": "Open settings",
     "privacy": "Privacy",
     "privacy_local": "All data stored locally in SQLite. Nothing is uploaded.",
     "privacy_key": "API Key is only used to call your configured LLM provider.",

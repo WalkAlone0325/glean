@@ -182,10 +182,11 @@ function onThemeChange(th: "light" | "dark" | "system") {
 const shortcuts = [
   { keys: "⌘ + K", desc: t('settings.shortcut_search') },
   { keys: "⌘ + ⇧ + Space", desc: t('settings.shortcut_toggle') },
+  { keys: "⌘ + ,", desc: t('settings.shortcut_settings') },
+  { keys: "⌘ + B", desc: t('settings.shortcut_chat') },
   { keys: "↑ ↓", desc: t('settings.shortcut_nav') },
   { keys: "Enter", desc: t('settings.shortcut_open') },
   { keys: "Esc", desc: t('settings.shortcut_esc') },
-  { keys: "⌘ + B", desc: t('settings.shortcut_chat') },
 ];
 </script>
 

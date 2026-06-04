@@ -129,7 +129,14 @@ const modeLabel = computed(() => {
             {{ store.error }}
           </div>
           <div
-            v-else-if="store.query && !store.hasResults && !store.loading"
+            v-else-if="store.loading && store.query"
+            class="flex items-center justify-center gap-2 px-4 py-8 text-sm text-muted-foreground/60"
+          >
+            <Loader2 class="size-4 animate-spin" />
+            {{ t('search.searching') }}
+          </div>
+          <div
+            v-else-if="store.query && !store.hasResults"
             class="px-4 py-8 text-center text-sm text-muted-foreground/60"
           >
             {{ t('search.no_results') }}

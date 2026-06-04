@@ -193,6 +193,7 @@
     "shortcut_open": "打开选中的文件 / 发送消息",
     "shortcut_esc": "关闭面板/弹窗",
     "shortcut_chat": "切换聊天面板",
+    "shortcut_settings": "打开设置",
     "privacy": "隐私",
     "privacy_local": "所有文件索引数据存储在本地 SQLite，不上传任何服务器",
     "privacy_key": "API Key 仅用于调用你配置的 LLM Provider，不会传输给第三方",
