@@ -130,7 +130,11 @@
     "unknown_error": "Unknown error",
     "tool_error": "Error",
     "tool_result": "Result",
-    "args": "Arguments"
+    "args": "Arguments",
+    "just_now": "Just now",
+    "minutes_ago": "{n} min ago",
+    "hours_ago": "{n} hr ago",
+    "days_ago": "{n} day ago"
   },
   "settings": {
     "title": "Settings",

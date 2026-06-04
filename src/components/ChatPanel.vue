@@ -24,7 +24,7 @@ import { renderMarkdown } from "../utils/markdown";
 import { useToastStore } from "../stores/toast";
 import "highlight.js/styles/github-dark.css";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const chat = useChatStore();
 const toast = useToastStore();
 const input = ref("");
@@ -164,7 +164,7 @@ function formatTime(ts: number): string {
   if (diff < 3600) return t('chat.minutes_ago', { n: Math.floor(diff / 60) });
   if (diff < 86400) return t('chat.hours_ago', { n: Math.floor(diff / 3600) });
   if (diff < 7 * 86400) return t('chat.days_ago', { n: Math.floor(diff / 86400) });
-  return d.toLocaleDateString(i18nLocale.value, { month: "2-digit", day: "2-digit" });
+  return d.toLocaleDateString(locale.value, { month: "2-digit", day: "2-digit" });
 }
 
 async function selectConversation(id: number) {

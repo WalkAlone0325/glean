@@ -123,7 +123,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       </button>
     </div>
     <div
-      class="grid grid-cols-[1fr_70px_65px_110px] gap-3 border-b border-border bg-muted/15 px-3 py-2 text-[11px] font-medium text-muted-foreground/60"
+      class="grid grid-cols-[1fr_70px_65px_110px] gap-3 border-b border-border bg-muted/15 px-3 py-1.5 text-[11px] font-medium text-muted-foreground/60"
     >
       <button
         class="flex items-center gap-1 text-left transition-colors hover:text-foreground/80"
