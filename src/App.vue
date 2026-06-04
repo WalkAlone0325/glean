@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play, MessageSquare, Star, PanelLeftClose, PanelLeftOpen } from "@lucide/vue";
+import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play, MessageSquare, Star, PanelLeftClose, PanelLeftOpen, Tags, ChevronDown, ChevronRight } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
@@ -31,6 +31,8 @@ const showSettings = ref(false);
 const showFirstRun = ref(true);
 const sidebarCollapsed = ref(false);
 const detailCollapsed = ref(false);
+const tagsExpanded = ref(false);
+const selectedTag = ref<string | null>(null);
 
 async function togglePause() {
   if (paused.value) {
@@ -118,6 +120,15 @@ watch(() => app.locale, (loc) => {
 watch(() => files.selectedId, (id) => {
   if (id !== null) detailCollapsed.value = false;
 });
+
+function selectTag(tagName: string | null) {
+  selectedTag.value = tagName;
+  files.setTagFilter(tagName);
+  if (tagName) {
+    files.showRecent = false;
+    files.showFavorites = false;
+  }
+}
 </script>
 
 <template>
@@ -161,11 +172,11 @@ watch(() => files.selectedId, (id) => {
                     ? 'bg-muted'
                     : 'hover:bg-muted',
                 ]"
-                @click="files.setViewMode('all')"
+                @click="files.setViewMode('all'); selectTag(null)"
               >
                 <Folder class="size-4" />
                 {{ t('sidebar.all_files') }}
-                <span class="ml-auto text-xs text-muted-foreground">{{ app.stats.files }}</span>
+                <span class="ml-auto text-xs text-muted-foreground">{{ selectedTag ? files.tagFilteredItems.length : app.stats.files }}</span>
               </a>
               <a
                 :class="[
@@ -188,6 +199,45 @@ watch(() => files.selectedId, (id) => {
                 {{ t('sidebar.favorites') }}
                 <span v-if="files.favoriteIds.size" class="ml-auto text-xs text-muted-foreground">{{ files.favoriteIds.size }}</span>
               </a>
+              <div class="pt-2">
+                <a
+                  class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+                  @click="tagsExpanded = !tagsExpanded"
+                >
+                  <ChevronRight v-if="!tagsExpanded" class="size-3" />
+                  <ChevronDown v-else class="size-3" />
+                  <Tags class="size-4" />
+                  {{ t('sidebar.tags') }}
+                </a>
+                <div v-if="tagsExpanded" class="ml-3 mt-1 space-y-0.5">
+                  <div v-if="!tags.all.length" class="px-2 py-1 text-xs text-muted-foreground">
+                    {{ t('sidebar.no_tags') }}
+                  </div>
+                  <a
+                    v-for="tag in tags.all"
+                    :key="tag.id"
+                    :class="[
+                      'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs',
+                      selectedTag === tag.name ? 'bg-muted font-medium' : 'hover:bg-muted',
+                    ]"
+                    @click="selectTag(tag.name)"
+                  >
+                    <span
+                      class="inline-block size-2 rounded-full"
+                      :style="{ backgroundColor: tag.color || '#888' }"
+                    />
+                    {{ tag.name }}
+                    <span class="ml-auto text-muted-foreground">{{ tag.file_count }}</span>
+                  </a>
+                  <a
+                    v-if="selectedTag"
+                    class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                    @click="selectTag(null)"
+                  >
+                    {{ t('kind.all') }}
+                  </a>
+                </div>
+              </div>
             </nav>
             <div>
               <div class="mb-2 px-2 text-xs uppercase tracking-wide text-muted-foreground">

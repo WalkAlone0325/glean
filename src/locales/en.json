@@ -15,7 +15,9 @@
     "indexed_folders": "Indexed Folders",
     "no_folders": "No folders indexed yet",
     "collapse": "Collapse sidebar",
-    "expand": "Expand sidebar"
+    "expand": "Expand sidebar",
+    "tags": "Tags",
+    "no_tags": "No tags yet"
   },
   "empty_state": {
     "title": "No folders indexed yet",

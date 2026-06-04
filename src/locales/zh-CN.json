@@ -15,7 +15,9 @@
     "indexed_folders": "已索引文件夹",
     "no_folders": "尚未索引任何文件夹",
     "collapse": "收起侧栏",
-    "expand": "展开侧栏"
+    "expand": "展开侧栏",
+    "tags": "标签",
+    "no_tags": "暂无标签"
   },
   "empty_state": {
     "title": "还没有索引任何文件夹",

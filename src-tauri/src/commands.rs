@@ -885,6 +885,43 @@ pub async fn set_file_tags(
     Ok(())
 }
 
+#[tauri::command]
+pub fn list_files_by_tag(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    tag_name: String,
+) -> Result<Vec<FileEntry>, String> {
+    let db_lock = db.blocking_lock();
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT f.id, f.path, f.name, f.ext, f.size, f.mtime, f.kind
+             FROM files f
+             JOIN file_tags ft ON ft.file_id = f.id
+             JOIN tags t ON t.id = ft.tag_id
+             WHERE t.name = ?1
+             ORDER BY f.name",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(rusqlite::params![&tag_name], |r| {
+            Ok(FileEntry {
+                id: r.get(0)?,
+                path: r.get(1)?,
+                name: r.get(2)?,
+                ext: r.get(3)?,
+                size: r.get(4)?,
+                mtime: r.get(5)?,
+                kind: r.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
 // ── Ignore Rules ──
 
 #[tauri::command]

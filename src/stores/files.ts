@@ -33,8 +33,11 @@ export const useFilesStore = defineStore("files", () => {
   const kindFilter = ref<string | null>(null);
   const selectedId = ref<number | null>(null);
   const nameFilter = ref("");
+  const tagFilter = ref<string | null>(null);
+  const tagFilteredItems = ref<FileEntry[]>([]);
 
   const filtered = computed(() => {
+    if (tagFilter.value) return tagFilteredItems.value;
     if (showFavorites.value) return favoriteItems.value;
     if (showRecent.value) return recentItems.value as unknown as FileEntry[];
     const q = nameFilter.value.trim().toLowerCase();
@@ -165,6 +168,20 @@ export const useFilesStore = defineStore("files", () => {
     else if (mode === "recent") loadRecentFiles();
   }
 
+  async function setTagFilter(tagName: string | null) {
+    tagFilter.value = tagName;
+    if (tagName) {
+      try {
+        tagFilteredItems.value = await invoke<FileEntry[]>("list_files_by_tag", { tagName });
+      } catch (e) {
+        console.warn("list files by tag failed:", e);
+        tagFilteredItems.value = [];
+      }
+    } else {
+      tagFilteredItems.value = [];
+    }
+  }
+
   return {
     items,
     recentItems,
@@ -191,5 +208,8 @@ export const useFilesStore = defineStore("files", () => {
     toggleFavorites,
     toggleFavorite,
     setViewMode,
+    tagFilter,
+    tagFilteredItems,
+    setTagFilter,
   };
 });

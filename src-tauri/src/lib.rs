@@ -77,6 +77,7 @@ pub fn run() {
             commands::delete_tag,
             commands::get_file_tags,
             commands::set_file_tags,
+            commands::list_files_by_tag,
             commands::get_ignore_rules,
             commands::set_ignore_rules,
         ])
