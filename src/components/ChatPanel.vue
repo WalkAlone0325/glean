@@ -17,11 +17,14 @@ import {
   Square,
   CheckCircle2,
   AlertCircle,
+  Undo2,
 } from "@lucide/vue";
 import { renderMarkdown } from "../utils/markdown";
+import { useToastStore } from "../stores/toast";
 import "highlight.js/styles/github-dark.css";
 
 const chat = useChatStore();
+const toast = useToastStore();
 const input = ref("");
 const scrollRef = useTemplateRef<HTMLDivElement>("scrollRef");
 const inputRef = useTemplateRef<HTMLTextAreaElement>("inputRef");
@@ -142,6 +145,12 @@ function onRespond(approved: boolean) {
   const first = chat.pendingConfirmations?.[0];
   if (!first) return;
   chat.respondConfirmation(first.callId, approved);
+}
+
+async function onUndo(operationId: number) {
+  const ok = await chat.undoOperation(operationId);
+  if (ok) toast.success("已撤销");
+  else toast.error("撤销失败：" + (chat.error || "未知错误"));
 }
 
 function formatTime(ts: number): string {
@@ -343,9 +352,22 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                         v-else-if="tc.status === 'denied'"
                         class="ml-auto text-[10px] text-yellow-600"
                       >已拒绝</span>
+                      <span
+                        v-else-if="tc.status === 'undone'"
+                        class="ml-auto text-[10px] text-emerald-600"
+                      >已撤销</span>
                       <span v-else-if="tc.durationMs !== undefined" class="ml-auto text-[10px] opacity-60">
                         {{ tc.durationMs }}ms
                       </span>
+                      <button
+                        v-if="tc.status === 'ok' && tc.undoable && tc.operationId !== undefined"
+                        class="ml-2 flex items-center gap-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] hover:bg-muted"
+                        title="撤销此操作"
+                        @click.stop="onUndo(tc.operationId)"
+                      >
+                        <Undo2 class="size-3" />
+                        撤销
+                      </button>
                     </summary>
                     <div class="space-y-1 border-t border-border/40 px-2 py-1.5">
                       <div v-if="tc.arguments" class="text-[10px] opacity-70">

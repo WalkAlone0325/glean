@@ -62,6 +62,8 @@ pub fn run() {
             commands::chat_send,
             commands::chat_stop,
             commands::tool_confirm,
+            commands::list_pending_operations,
+            commands::undo_operation,
             commands::list_messages,
             commands::list_conversations,
             commands::delete_conversation,

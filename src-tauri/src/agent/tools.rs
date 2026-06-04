@@ -305,11 +305,13 @@ impl Tool for ListSimilarTool {
     }
 }
 
-pub struct MoveFileTool {}
+pub struct MoveFileTool {
+    db: Arc<Mutex<Database>>,
+}
 
 impl MoveFileTool {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(db: Arc<Mutex<Database>>) -> Self {
+        Self { db }
     }
 }
 
@@ -381,14 +383,32 @@ impl Tool for MoveFileTool {
             }
         }
 
+        let overwritten = parsed.overwrite && dst.exists();
         let src_size = src.metadata()?.len();
         std::fs::rename(src, dst)?;
+
+        let payload = json!({
+            "size": src_size,
+            "overwritten": overwritten,
+        })
+        .to_string();
+        let op_id = super::history::record(
+            &self.db,
+            "move",
+            Some(&parsed.src),
+            Some(&parsed.dst),
+            Some(&payload),
+        )
+        .await
+        .unwrap_or(-1);
 
         Ok(json!({
             "src": parsed.src,
             "dst": parsed.dst,
             "size": src_size,
-            "overwritten": parsed.overwrite && dst.exists(),
+            "overwritten": overwritten,
+            "operation_id": op_id,
+            "undoable": !overwritten,
         })
         .to_string())
     }
@@ -448,44 +468,58 @@ impl Tool for TagFileTool {
             return Err(anyhow!("tags must not be empty"));
         }
 
-        let db_lock = self.db.lock().await;
-        let conn = db_lock.conn.lock().map_err(|e| anyhow!("db mutex: {}", e))?;
+        let (file_id, attached) = {
+            let db_lock = self.db.lock().await;
+            let conn = db_lock.conn.lock().map_err(|e| anyhow!("db mutex: {}", e))?;
 
-        let file_id: i64 = conn
-            .query_row(
-                "SELECT id FROM files WHERE path = ?1 AND deleted_at IS NULL LIMIT 1",
-                rusqlite::params![&parsed.path],
-                |r| r.get(0),
-            )
-            .map_err(|_| anyhow!("file not indexed: {}", parsed.path))?;
+            let fid: i64 = conn
+                .query_row(
+                    "SELECT id FROM files WHERE path = ?1 AND deleted_at IS NULL LIMIT 1",
+                    rusqlite::params![&parsed.path],
+                    |r| r.get(0),
+                )
+                .map_err(|_| anyhow!("file not indexed: {}", parsed.path))?;
 
-        let mut attached: Vec<String> = Vec::new();
-        for tag in &parsed.tags {
-            let trimmed = tag.trim();
-            if trimmed.is_empty() {
-                continue;
+            let mut attached: Vec<String> = Vec::new();
+            for tag in &parsed.tags {
+                let trimmed = tag.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                conn.execute(
+                    "INSERT OR IGNORE INTO tags (name) VALUES (?1)",
+                    rusqlite::params![trimmed],
+                )?;
+                let tag_id: i64 = conn.query_row(
+                    "SELECT id FROM tags WHERE name = ?1",
+                    rusqlite::params![trimmed],
+                    |r| r.get(0),
+                )?;
+                conn.execute(
+                    "INSERT OR IGNORE INTO file_tags (file_id, tag_id) VALUES (?1, ?2)",
+                    rusqlite::params![fid, tag_id],
+                )?;
+                attached.push(trimmed.to_string());
             }
-            conn.execute(
-                "INSERT OR IGNORE INTO tags (name) VALUES (?1)",
-                rusqlite::params![trimmed],
-            )?;
-            let tag_id: i64 = conn.query_row(
-                "SELECT id FROM tags WHERE name = ?1",
-                rusqlite::params![trimmed],
-                |r| r.get(0),
-            )?;
-            conn.execute(
-                "INSERT OR IGNORE INTO file_tags (file_id, tag_id) VALUES (?1, ?2)",
-                rusqlite::params![file_id, tag_id],
-            )?;
-            attached.push(trimmed.to_string());
-        }
+            (fid, attached)
+        };
+
+        let payload = json!({
+            "file_id": file_id,
+            "attached": attached,
+        })
+        .to_string();
+        let op_id = super::history::record(&self.db, "tag", Some(&parsed.path), None, Some(&payload))
+            .await
+            .unwrap_or(-1);
 
         Ok(json!({
             "path": parsed.path,
             "file_id": file_id,
             "tags": attached,
             "count": attached.len(),
+            "operation_id": op_id,
+            "undoable": true,
         })
         .to_string())
     }

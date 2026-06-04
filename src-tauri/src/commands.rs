@@ -430,6 +430,49 @@ pub async fn tool_confirm(
 }
 
 #[derive(serde::Serialize)]
+pub struct OperationSummary {
+    pub id: i64,
+    pub kind: String,
+    pub source_path: Option<String>,
+    pub target_path: Option<String>,
+    pub payload: Option<String>,
+    pub created_at: i64,
+}
+
+#[tauri::command]
+pub async fn list_pending_operations(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    limit: Option<i64>,
+) -> Result<Vec<OperationSummary>, String> {
+    let limit = limit.unwrap_or(20).clamp(1, 100);
+    let ops = crate::agent::history::list_pending(db.inner(), limit)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(ops
+        .into_iter()
+        .map(|o| OperationSummary {
+            id: o.id,
+            kind: o.kind,
+            source_path: o.source_path,
+            target_path: o.target_path,
+            payload: o.payload,
+            created_at: o.created_at,
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub async fn undo_operation(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    operation_id: i64,
+) -> Result<(), String> {
+    crate::agent::history::undo(db.inner(), operation_id)
+        .await
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[derive(serde::Serialize)]
 pub struct ChatStartResult {
     pub conversation_id: i64,
     pub message_id: i64,

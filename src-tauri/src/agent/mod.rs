@@ -1,3 +1,4 @@
+pub mod history;
 pub mod tools;
 
 use crate::llm::ToolDefinition;
@@ -38,7 +39,7 @@ impl ToolRegistry {
             Arc::new(tools::SearchFilesTool::new(db.clone())),
             Arc::new(tools::ReadFileTool::new()),
             Arc::new(tools::ListSimilarTool::new(db.clone())),
-            Arc::new(tools::MoveFileTool::new()),
+            Arc::new(tools::MoveFileTool::new(db.clone())),
             Arc::new(tools::TagFileTool::new(db)),
         ];
         Self { tools }

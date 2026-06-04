@@ -20,10 +20,12 @@ export interface ToolCallEntry {
   callId: string;
   name: string;
   arguments: string;
-  status: "pending-confirm" | "running" | "ok" | "error" | "denied";
+  status: "pending-confirm" | "running" | "ok" | "error" | "denied" | "undone";
   result?: string;
   error?: string;
   durationMs?: number;
+  operationId?: number;
+  undoable?: boolean;
 }
 
 export interface PendingConfirmation {
@@ -103,12 +105,25 @@ export const useChatStore = defineStore("chat", () => {
     durationMs: number,
   ) {
     if (!msg.toolCalls) msg.toolCalls = [];
+    let operationId: number | undefined;
+    let undoable: boolean | undefined;
+    if (!error && result) {
+      try {
+        const parsed = JSON.parse(result);
+        if (typeof parsed.operation_id === "number") operationId = parsed.operation_id;
+        if (typeof parsed.undoable === "boolean") undoable = parsed.undoable;
+      } catch {
+        /* ignore */
+      }
+    }
     const existing = msg.toolCalls.find((t) => t.callId === callId);
     if (existing) {
       existing.status = error ? "error" : "ok";
       existing.result = result;
       existing.error = error || undefined;
       existing.durationMs = durationMs;
+      existing.operationId = operationId;
+      existing.undoable = undoable;
     } else {
       msg.toolCalls.push({
         callId,
@@ -118,6 +133,8 @@ export const useChatStore = defineStore("chat", () => {
         result,
         error: error || undefined,
         durationMs,
+        operationId,
+        undoable,
       });
     }
   }
@@ -200,6 +217,24 @@ export const useChatStore = defineStore("chat", () => {
       await invoke("tool_confirm", { callId, approved });
     } catch (e) {
       console.warn("tool_confirm failed:", e);
+    }
+  }
+
+  async function undoOperation(operationId: number, callIdHint?: string): Promise<boolean> {
+    try {
+      await invoke("undo_operation", { operationId });
+      for (const m of messages.value) {
+        if (!m.toolCalls) continue;
+        for (const t of m.toolCalls) {
+          if (t.operationId === operationId || (callIdHint && t.callId === callIdHint)) {
+            t.status = "undone";
+          }
+        }
+      }
+      return true;
+    } catch (e) {
+      error.value = String(e);
+      return false;
     }
   }
 
@@ -327,5 +362,6 @@ export const useChatStore = defineStore("chat", () => {
     togglePanel,
     ensureListeners,
     respondConfirmation,
+    undoOperation,
   };
 });
