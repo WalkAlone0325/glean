@@ -303,6 +303,14 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         <Copy class="size-3.5" />
         {{ t('filelist.copy_path') }}
       </button>
+      <div class="mx-2 my-1 border-t border-border" />
+      <button
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-muted"
+        @click="doToggleFavorite(ctxFile()!.id); closeCtxMenu()"
+      >
+        <Star class="size-3.5" :fill="ctxFile() && store.favoriteIds.has(ctxFile()!.id) ? 'currentColor' : 'none'" />
+        {{ ctxFile() && store.favoriteIds.has(ctxFile()!.id) ? t('filelist.rm_fav') : t('filelist.add_fav') }}
+      </button>
     </ContextMenu>
   </div>
 </template>

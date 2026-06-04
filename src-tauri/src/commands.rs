@@ -272,6 +272,23 @@ pub async fn list_recent_files(
 }
 
 #[tauri::command]
+#[tauri::command]
+pub fn remove_indexed_root(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    root: String,
+) -> Result<(), String> {
+    let root_with_slash = if root.ends_with('/') { root.clone() } else { format!("{}/", root) };
+    let db_lock = db.blocking_lock();
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM files WHERE path LIKE ?1",
+        rusqlite::params![format!("{}%", root_with_slash)],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_indexed_roots(
     db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
 ) -> Result<Vec<String>, String> {

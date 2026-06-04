@@ -42,6 +42,7 @@ pub fn run() {
             commands::greet,
             commands::get_stats,
             commands::get_indexed_roots,
+            commands::remove_indexed_root,
             commands::list_files,
             commands::read_text_preview,
             commands::start_indexing,

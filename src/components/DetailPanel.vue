@@ -221,6 +221,7 @@ async function addNewTag() {
 watch(
   () => file.value?.id,
   () => {
+    loadPreview();
     loadFileTags();
     showTagPicker.value = false;
   },
