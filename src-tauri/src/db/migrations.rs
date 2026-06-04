@@ -125,5 +125,15 @@ pub fn migrations() -> Migrations<'static> {
             CREATE INDEX IF NOT EXISTS idx_embedding_jobs ON embedding_jobs(chunk_id);
             "#,
         ),
+        M::up(
+            r#"
+            CREATE TABLE IF NOT EXISTS recently_viewed (
+                file_id   INTEGER NOT NULL,
+                viewed_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+                FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_recently_viewed ON recently_viewed(viewed_at DESC);
+            "#,
+        ),
     ])
 }

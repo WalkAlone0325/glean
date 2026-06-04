@@ -12,11 +12,17 @@ export interface FileEntry {
   kind: string | null;
 }
 
+export interface RecentFile extends FileEntry {
+  viewed_at: number;
+}
+
 export type SortKey = "mtime" | "name" | "size" | "ext";
 export type SortDir = "asc" | "desc";
 
 export const useFilesStore = defineStore("files", () => {
   const items = ref<FileEntry[]>([]);
+  const recentItems = ref<RecentFile[]>([]);
+  const showRecent = ref(false);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const sortKey = ref<SortKey>("mtime");
@@ -26,6 +32,7 @@ export const useFilesStore = defineStore("files", () => {
   const nameFilter = ref("");
 
   const filtered = computed(() => {
+    if (showRecent.value) return recentItems.value as unknown as FileEntry[];
     const q = nameFilter.value.trim().toLowerCase();
     if (!q) return items.value;
     return items.value.filter(
@@ -80,10 +87,37 @@ export const useFilesStore = defineStore("files", () => {
 
   function select(id: number | null) {
     selectedId.value = id;
+    if (id !== null) {
+      trackView(id);
+    }
+  }
+
+  async function trackView(fileId: number) {
+    try {
+      await invoke("track_file_view", { fileId });
+      if (showRecent.value) await loadRecentFiles();
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  async function loadRecentFiles() {
+    try {
+      recentItems.value = await invoke<RecentFile[]>("list_recent_files", { limit: 30 });
+    } catch (e) {
+      console.warn("load recent files failed:", e);
+    }
+  }
+
+  function toggleRecent() {
+    showRecent.value = !showRecent.value;
+    if (showRecent.value) loadRecentFiles();
   }
 
   return {
     items,
+    recentItems,
+    showRecent,
     filtered,
     loading,
     error,
@@ -97,5 +131,7 @@ export const useFilesStore = defineStore("files", () => {
     setKindFilter,
     setNameFilter,
     select,
+    loadRecentFiles,
+    toggleRecent,
   };
 });

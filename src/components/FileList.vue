@@ -80,11 +80,37 @@ async function ctxAction(action: "open" | "finder" | "copy") {
   else if (action === "copy") await copyPath(f.path);
 }
 
+function switchToAll() {
+  store.showRecent = false;
+  store.select(null);
+  if (!store.items.length) store.reload();
+}
+
 watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "post" });
 </script>
 
 <template>
   <div class="flex h-full flex-col">
+    <div class="flex items-center gap-2 border-b border-border px-3 py-1 text-[10px] text-muted-foreground">
+      <button
+        :class="[
+          'rounded px-2 py-0.5',
+          store.showRecent ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+        ]"
+        @click="store.toggleRecent()"
+      >
+        最近查看
+      </button>
+      <button
+        :class="[
+          'rounded px-2 py-0.5',
+          !store.showRecent ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+        ]"
+        @click="switchToAll"
+      >
+        全部文件
+      </button>
+    </div>
     <div
       class="grid grid-cols-[1fr_80px_70px_120px] gap-3 border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground"
     >
@@ -143,7 +169,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       >
         <Search v-if="store.nameFilter" class="size-6 opacity-50" />
         <span class="text-sm">
-          {{ store.nameFilter ? `没有匹配 "${store.nameFilter}" 的文件` : "暂无文件" }}
+          {{ store.showRecent ? "暂无最近查看的文件" : store.nameFilter ? `没有匹配 "${store.nameFilter}" 的文件` : "暂无文件" }}
         </span>
         <span v-if="store.nameFilter" class="text-xs">试试清空过滤词或更换关键词</span>
       </div>
@@ -215,7 +241,10 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       v-if="store.items.length"
       class="border-t border-border px-3 py-1 text-[10px] text-muted-foreground"
     >
-      <template v-if="store.nameFilter">
+      <template v-if="store.showRecent">
+        {{ store.filtered.length }} 个最近查看
+      </template>
+      <template v-else-if="store.nameFilter">
         过滤 {{ store.filtered.length }}/{{ store.items.length }}
       </template>
       <template v-else>

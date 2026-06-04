@@ -55,6 +55,8 @@ pub fn run() {
             commands::hybrid_search_files,
             commands::open_file,
             commands::reveal_in_finder,
+            commands::track_file_view,
+            commands::list_recent_files,
             commands::get_setting,
             commands::set_setting,
             commands::get_provider_config,

@@ -195,6 +195,82 @@ pub async fn reveal_in_finder(path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(serde::Serialize)]
+pub struct RecentFile {
+    pub id: i64,
+    pub path: String,
+    pub name: String,
+    pub ext: Option<String>,
+    pub size: i64,
+    pub mtime: i64,
+    pub kind: Option<String>,
+    pub viewed_at: i64,
+}
+
+#[tauri::command]
+pub async fn track_file_view(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    file_id: i64,
+) -> Result<(), String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM recently_viewed WHERE file_id = ?1", rusqlite::params![file_id])
+        .map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO recently_viewed (file_id) VALUES (?1)",
+        rusqlite::params![file_id],
+    )
+    .map_err(|e| e.to_string())?;
+    // keep only top 50
+    conn.execute(
+        "DELETE FROM recently_viewed WHERE rowid NOT IN (
+            SELECT rowid FROM recently_viewed ORDER BY viewed_at DESC LIMIT 50
+        )",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn list_recent_files(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    limit: Option<i64>,
+) -> Result<Vec<RecentFile>, String> {
+    let limit = limit.unwrap_or(20).clamp(1, 50);
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT f.id, f.path, f.name, f.ext, f.size, f.mtime, f.kind, rv.viewed_at
+             FROM recently_viewed rv
+             JOIN files f ON f.id = rv.file_id
+             WHERE f.deleted_at IS NULL
+             ORDER BY rv.viewed_at DESC
+             LIMIT ?1",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(rusqlite::params![limit], |r| {
+            Ok(RecentFile {
+                id: r.get(0)?,
+                path: r.get(1)?,
+                name: r.get(2)?,
+                ext: r.get(3)?,
+                size: r.get(4)?,
+                mtime: r.get(5)?,
+                kind: r.get(6)?,
+                viewed_at: r.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
 #[tauri::command]
 pub fn get_indexed_roots(
     db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
