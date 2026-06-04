@@ -146,6 +146,7 @@
     "save": "Save",
     "saved": "Settings saved",
     "save_failed": "Failed to save: {msg}",
+    "appearance": "Appearance",
     "llm_provider": "LLM Provider",
     "presets": "Presets",
     "base_url": "Base URL",

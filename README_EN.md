@@ -17,11 +17,14 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-WIP-orange" alt="status" />
+  <a href="https://github.com/WalkAlone0325/glean/actions/workflows/ci.yml"><img src="https://github.com/WalkAlone0325/glean/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/WalkAlone0325/glean/releases"><img src="https://img.shields.io/github/v/release/WalkAlone0325/glean?include_prereleases" alt="Release" /></a>
+  <a href="https://walkalone0325.github.io/glean/"><img src="https://img.shields.io/badge/docs-online-blue" alt="Docs" /></a>
   <img src="https://img.shields.io/badge/platform-macOS%2013%2B-blue" alt="platform" />
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   <img src="https://img.shields.io/badge/Tauri-v2-blueviolet" alt="tauri" />
   <img src="https://img.shields.io/badge/Vue-3.5-brightgreen" alt="vue" />
+  <img src="https://img.shields.io/github/downloads/WalkAlone0325/glean/total?label=downloads" alt="downloads" />
 </p>
 
 ---

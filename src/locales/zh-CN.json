@@ -146,6 +146,7 @@
     "save": "保存",
     "saved": "设置已保存",
     "save_failed": "保存失败: {msg}",
+    "appearance": "外观",
     "llm_provider": "LLM Provider",
     "presets": "预设方案",
     "base_url": "Base URL",
