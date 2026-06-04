@@ -63,6 +63,19 @@ impl Searcher {
         }
 
         let conn = conn.lock().map_err(|e| anyhow::anyhow!("db mutex: {}", e))?;
+        self.search_on_conn(&conn, &fts_query, filter, limit)
+    }
+
+    pub fn search_on_conn(
+        &self,
+        conn: &Connection,
+        fts_query: &str,
+        filter: SearchFilter,
+        limit: i64,
+    ) -> Result<Vec<SearchResult>> {
+        if fts_query.is_empty() {
+            return Ok(Vec::new());
+        }
 
         let mut sql = String::from(
             "SELECT f.id, f.path, f.name, f.ext, f.size, f.mtime, f.kind,
@@ -75,7 +88,7 @@ impl Searcher {
         );
 
         let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> =
-            vec![Box::new(fts_query.clone())];
+            vec![Box::new(fts_query.to_string())];
 
         let mut idx = 2;
         if let Some(ext) = &filter.ext {
@@ -126,6 +139,10 @@ impl Searcher {
         Ok(results)
     }
 
+    pub fn tokenize_query(&self, query: &str) -> Vec<String> {
+        self.tokenize(query)
+    }
+
     fn tokenize(&self, query: &str) -> Vec<String> {
         let trimmed = query.trim();
         if trimmed.is_empty() {
@@ -156,7 +173,7 @@ impl Searcher {
     }
 }
 
-fn escape_fts(word: &str) -> String {
+pub fn escape_fts(word: &str) -> String {
     let needs_quote = word
         .chars()
         .any(|c| matches!(c, '"' | '*' | '?' | '(' | ')' | ' ' | '\t' | ':'));

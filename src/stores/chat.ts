@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useToastStore } from "./toast";
 
 export interface RagReference {
   file_id: number;
@@ -62,11 +63,9 @@ export const useChatStore = defineStore("chat", () => {
   const panelOpen = ref(false);
   const pendingConfirmations = ref<PendingConfirmation[]>([]);
 
-  let unlistenDelta: UnlistenFn | null = null;
-  let unlistenDone: UnlistenFn | null = null;
-  let unlistenToolCall: UnlistenFn | null = null;
-  let unlistenToolResult: UnlistenFn | null = null;
-  let unlistenToolConfirm: UnlistenFn | null = null;
+  const unlisteners: UnlistenFn[] = [];
+  let listenersReady = false;
+  let listenersPromise: Promise<void> | null = null;
 
   const hasMessages = computed(() => messages.value.length > 0);
 
@@ -140,83 +139,110 @@ export const useChatStore = defineStore("chat", () => {
   }
 
   async function ensureListeners() {
-    if (unlistenDelta && unlistenDone && unlistenToolCall && unlistenToolResult && unlistenToolConfirm) return;
-    unlistenDelta = await listen<{ conversation_id: number; message_id: number; delta: string }>(
-      "chat-delta",
-      (e) => {
+    if (listenersReady) return;
+    if (listenersPromise) return listenersPromise;
+    listenersPromise = (async () => {
+      const deltaUnlisten = await listen<{
+        conversation_id: number;
+        message_id: number;
+        delta: string;
+      }>("chat-delta", (e) => {
         const { delta } = e.payload;
         const target = findStreamingMessage();
         if (target) target.content += delta;
-      },
-    );
-    unlistenDone = await listen<{
-      conversation_id: number;
-      message_id: number;
-      input_tokens: number | null;
-      output_tokens: number | null;
-      error: string | null;
-    }>("chat-done", (e) => {
-      const { error: err } = e.payload;
-      loading.value = false;
-      const target = findStreamingMessage();
-      if (target) {
-        target.streaming = false;
-        if (err) error.value = err;
-      }
-    });
-    unlistenToolCall = await listen<{
-      conversation_id: number;
-      message_id: number;
-      call_id: string;
-      name: string;
-      arguments: string;
-    }>("agent-tool-call", (e) => {
-      const { call_id, name, arguments: args } = e.payload;
-      const target = findStreamingMessage();
-      if (target) pushToolCall(target, call_id, name, args);
-    });
-    unlistenToolResult = await listen<{
-      conversation_id: number;
-      message_id: number;
-      call_id: string;
-      result: string;
-      error: string | null;
-      duration_ms: number;
-    }>("agent-tool-result", (e) => {
-      const { call_id, result, error, duration_ms } = e.payload;
-      const target = findStreamingMessage();
-      if (target) completeToolCall(target, call_id, result, error, duration_ms);
-    });
-    unlistenToolConfirm = await listen<{
-      conversation_id: number;
-      message_id: number;
-      call_id: string;
-      name: string;
-      arguments: string;
-    }>("agent-tool-confirm", (e) => {
-      const { conversation_id, message_id, call_id, name, arguments: args } = e.payload;
-      const target = findStreamingMessage();
-      if (target) markToolPendingConfirm(target, call_id);
-      pendingConfirmations.value.push({
-        callId: call_id,
-        conversationId: conversation_id,
-        messageId: message_id,
-        name,
-        arguments: args,
       });
-    });
+      unlisteners.push(deltaUnlisten);
+
+      const doneUnlisten = await listen<{
+        conversation_id: number;
+        message_id: number;
+        input_tokens: number | null;
+        output_tokens: number | null;
+        error: string | null;
+      }>("chat-done", (e) => {
+        const { error: err } = e.payload;
+        loading.value = false;
+        const target = findStreamingMessage();
+        if (target) {
+          target.streaming = false;
+          if (err) error.value = err;
+        }
+      });
+      unlisteners.push(doneUnlisten);
+
+      const toolCallUnlisten = await listen<{
+        conversation_id: number;
+        message_id: number;
+        call_id: string;
+        name: string;
+        arguments: string;
+      }>("agent-tool-call", (e) => {
+        const { call_id, name, arguments: args } = e.payload;
+        const target = findStreamingMessage();
+        if (target) pushToolCall(target, call_id, name, args);
+      });
+      unlisteners.push(toolCallUnlisten);
+
+      const toolResultUnlisten = await listen<{
+        conversation_id: number;
+        message_id: number;
+        call_id: string;
+        result: string;
+        error: string | null;
+        duration_ms: number;
+      }>("agent-tool-result", (e) => {
+        const { call_id, result, error, duration_ms } = e.payload;
+        const target = findStreamingMessage();
+        if (target) completeToolCall(target, call_id, result, error, duration_ms);
+      });
+      unlisteners.push(toolResultUnlisten);
+
+      const toolConfirmUnlisten = await listen<{
+        conversation_id: number;
+        message_id: number;
+        call_id: string;
+        name: string;
+        arguments: string;
+      }>("agent-tool-confirm", (e) => {
+        const { conversation_id, message_id, call_id, name, arguments: args } = e.payload;
+        const target = findStreamingMessage();
+        if (target) markToolPendingConfirm(target, call_id);
+        pendingConfirmations.value.push({
+          callId: call_id,
+          conversationId: conversation_id,
+          messageId: message_id,
+          name,
+          arguments: args,
+        });
+      });
+      unlisteners.push(toolConfirmUnlisten);
+
+      listenersReady = true;
+    })();
+    return listenersPromise;
   }
 
   async function respondConfirmation(callId: string, approved: boolean) {
-    pendingConfirmations.value = pendingConfirmations.value.filter((p) => p.callId !== callId);
-    if (!approved) {
-      const target = findStreamingMessage();
-      if (target) markToolDenied(target, callId);
-    }
+    const pending = pendingConfirmations.value.find((p) => p.callId === callId);
+    if (!pending) return;
     try {
-      await invoke("tool_confirm", { callId, approved });
+      const found = await invoke<boolean>("tool_confirm", {
+        conversationId: pending.conversationId,
+        callId,
+        approved,
+      });
+      if (!found) {
+        console.warn("tool_confirm: backend has no pending entry for", callId);
+      }
+      pendingConfirmations.value = pendingConfirmations.value.filter((p) => p.callId !== callId);
+      if (!approved) {
+        const target = findStreamingMessage();
+        if (target) markToolDenied(target, callId);
+      }
     } catch (e) {
       console.warn("tool_confirm failed:", e);
+      const toast = useToastStore();
+      toast.error("确认失败：" + String(e));
     }
   }
 
@@ -278,10 +304,25 @@ export const useChatStore = defineStore("chat", () => {
 
   async function stopGenerate() {
     if (!loading.value) return;
+    const convId = conversationId.value;
     try {
-      await invoke("chat_stop");
+      await invoke("chat_stop", { conversationId: convId });
     } catch (e) {
       console.warn("stop failed:", e);
+    }
+    loading.value = false;
+    for (const m of messages.value) {
+      if (m.streaming) {
+        m.streaming = false;
+        if (!m.content) m.content = "[已中断]";
+      }
+    }
+    if (pendingConfirmations.value.length) {
+      for (const p of pendingConfirmations.value) {
+        const target = findStreamingMessage();
+        if (target) markToolDenied(target, p.callId);
+      }
+      pendingConfirmations.value = [];
     }
   }
 
@@ -335,6 +376,7 @@ export const useChatStore = defineStore("chat", () => {
     conversationId.value = null;
     messages.value = [];
     error.value = null;
+    pendingConfirmations.value = [];
   }
 
   function togglePanel() {

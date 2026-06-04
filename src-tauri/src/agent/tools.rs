@@ -92,12 +92,30 @@ impl Tool for SearchFilesTool {
             since: None,
         };
 
-        let db_lock = self.db.lock().await;
-        let searcher = Searcher::new();
-        let results = searcher
-            .search(&db_lock.conn, &parsed.query, filter, limit)
-            .map_err(|e| anyhow!("search failed: {}", e))?;
-        drop(db_lock);
+        let (results, fts_query) = {
+            let db_lock = self.db.lock().await;
+            let conn = db_lock.conn.lock().map_err(|e| anyhow!("db mutex: {}", e))?;
+            let searcher = Searcher::new();
+            let words = searcher.tokenize_query(&parsed.query);
+            if words.is_empty() {
+                return Ok(json!({ "results": [], "count": 0 }).to_string());
+            }
+            let fts_query = words
+                .iter()
+                .map(|w| crate::search::escape_fts(w))
+                .filter(|w| !w.is_empty())
+                .collect::<Vec<_>>()
+                .join(" ");
+            let results = if fts_query.is_empty() {
+                Vec::new()
+            } else {
+                searcher
+                    .search_on_conn(&conn, &fts_query, filter, limit)
+                    .map_err(|e| anyhow!("search failed: {}", e))?
+            };
+            (results, fts_query)
+        };
+        let _ = fts_query;
 
         let arr: Vec<Value> = results
             .into_iter()
@@ -386,6 +404,23 @@ impl Tool for MoveFileTool {
         let overwritten = parsed.overwrite && dst.exists();
         let src_size = src.metadata()?.len();
         std::fs::rename(src, dst)?;
+
+        let db_update_ok = {
+            let db_lock = self.db.lock().await;
+            let conn_guard = db_lock.conn.lock();
+            match conn_guard {
+                Ok(conn) => conn
+                    .execute(
+                        "UPDATE files SET path = ?1 WHERE path = ?2",
+                        rusqlite::params![&parsed.dst, &parsed.src],
+                    )
+                    .is_ok(),
+                Err(_) => false,
+            }
+        };
+        if !db_update_ok {
+            tracing::warn!("files 表路径同步失败: {} -> {}", parsed.src, parsed.dst);
+        }
 
         let payload = json!({
             "size": src_size,

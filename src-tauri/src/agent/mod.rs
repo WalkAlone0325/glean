@@ -64,14 +64,32 @@ impl ConfirmationRegistry {
         Self::default()
     }
 
-    pub async fn register(&self, call_id: String) -> oneshot::Receiver<bool> {
+    fn make_key(conversation_id: i64, call_id: &str) -> String {
+        format!("{}:{}", conversation_id, call_id)
+    }
+
+    pub async fn register(
+        &self,
+        conversation_id: i64,
+        call_id: String,
+    ) -> oneshot::Receiver<bool> {
         let (tx, rx) = oneshot::channel();
-        self.pending.lock().await.insert(call_id, tx);
+        let key = Self::make_key(conversation_id, &call_id);
+        let mut guard = self.pending.lock().await;
+        if let Some(old) = guard.insert(key, tx) {
+            let _ = old.send(false);
+        }
         rx
     }
 
-    pub async fn resolve(&self, call_id: &str, approved: bool) -> bool {
-        if let Some(tx) = self.pending.lock().await.remove(call_id) {
+    pub async fn resolve(
+        &self,
+        conversation_id: i64,
+        call_id: &str,
+        approved: bool,
+    ) -> bool {
+        let key = Self::make_key(conversation_id, call_id);
+        if let Some(tx) = self.pending.lock().await.remove(&key) {
             let _ = tx.send(approved);
             true
         } else {
@@ -79,7 +97,20 @@ impl ConfirmationRegistry {
         }
     }
 
-    pub async fn cancel(&self, call_id: &str) {
-        self.pending.lock().await.remove(call_id);
+    pub async fn cancel_conversation(&self, conversation_id: i64) -> usize {
+        let prefix = format!("{}:", conversation_id);
+        let mut guard = self.pending.lock().await;
+        let keys: Vec<String> = guard
+            .keys()
+            .filter(|k| k.starts_with(&prefix))
+            .cloned()
+            .collect();
+        let n = keys.len();
+        for k in keys {
+            if let Some(tx) = guard.remove(&k) {
+                let _ = tx.send(false);
+            }
+        }
+        n
     }
 }

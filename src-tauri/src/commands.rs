@@ -392,8 +392,15 @@ pub fn get_provider_config(
 }
 
 #[tauri::command]
-pub fn chat_stop() {
+pub async fn chat_stop(
+    confirmations: State<'_, std::sync::Arc<crate::agent::ConfirmationRegistry>>,
+    conversation_id: Option<i64>,
+) -> Result<(), String> {
     crate::rag::request_stop();
+    if let Some(cid) = conversation_id {
+        confirmations.inner().cancel_conversation(cid).await;
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -422,11 +429,15 @@ pub async fn chat_send(
 #[tauri::command]
 pub async fn tool_confirm(
     confirmations: State<'_, std::sync::Arc<crate::agent::ConfirmationRegistry>>,
+    conversation_id: i64,
     call_id: String,
     approved: bool,
 ) -> Result<bool, String> {
-    confirmations.inner().resolve(&call_id, approved).await;
-    Ok(true)
+    let found = confirmations
+        .inner()
+        .resolve(conversation_id, &call_id, approved)
+        .await;
+    Ok(found)
 }
 
 #[derive(serde::Serialize)]

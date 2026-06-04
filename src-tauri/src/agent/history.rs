@@ -113,6 +113,11 @@ pub async fn undo(db: &Arc<Mutex<Database>>, operation_id: i64) -> Result<Operat
                 return Err(anyhow!("无法撤销：源路径已存在 {}", src));
             }
             std::fs::rename(dst, src)?;
+
+            let _ = conn.execute(
+                "UPDATE files SET path = ?1 WHERE path = ?2",
+                params![src, dst],
+            );
         }
         "tag" => {
             let payload_str = op

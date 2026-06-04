@@ -230,7 +230,7 @@ impl LLMProvider for OpenAIProvider {
         }
 
         let mut stream = resp.bytes_stream();
-        let mut buf = String::new();
+        let mut buf: Vec<u8> = Vec::new();
         let mut full_content = String::new();
         let mut input_tokens: Option<u32> = None;
         let mut output_tokens: Option<u32> = None;
@@ -239,19 +239,24 @@ impl LLMProvider for OpenAIProvider {
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk?;
-            buf.push_str(&String::from_utf8_lossy(&chunk));
+            buf.extend_from_slice(&chunk);
 
             loop {
-                let Some(line_end) = buf.find('\n') else { break };
-                let line = buf[..line_end].trim().to_string();
-                buf.drain(..=line_end);
-
-                if line.is_empty() || !line.starts_with("data:") {
+                let Some(line_end) = buf.iter().position(|b| *b == b'\n') else { break };
+                let line_bytes: Vec<u8> = buf.drain(..=line_end).collect();
+                let line_str = match std::str::from_utf8(&line_bytes) {
+                    Ok(s) => s.trim().to_string(),
+                    Err(_) => {
+                        let lossy = String::from_utf8_lossy(&line_bytes);
+                        lossy.trim().to_string()
+                    }
+                };
+                if line_str.is_empty() || !line_str.starts_with("data:") {
                     continue;
                 }
-                let data = line[5..].trim();
+                let data = line_str[5..].trim();
                 if data == "[DONE]" {
-                    continue;
+                    break;
                 }
                 let Ok(value): Result<Value, _> = serde_json::from_str(data) else {
                     continue;
@@ -268,15 +273,16 @@ impl LLMProvider for OpenAIProvider {
 
                 if let Some(arr) = delta["tool_calls"].as_array() {
                     for tc in arr {
-                        let idx = tc["index"].as_u64().unwrap_or(0) as usize;
+                        let Some(idx) = tc["index"].as_u64() else { continue };
+                        let idx = idx as usize;
                         while tool_call_state.len() <= idx {
                             tool_call_state.push(ToolCallAccumulator::default());
                         }
                         let slot = &mut tool_call_state[idx];
-                        if let Some(id) = tc["id"].as_str() {
+                        if let Some(id) = tc["id"].as_str().filter(|s| !s.is_empty()) {
                             slot.id = id.to_string();
                         }
-                        if let Some(name) = tc["function"]["name"].as_str() {
+                        if let Some(name) = tc["function"]["name"].as_str().filter(|s| !s.is_empty()) {
                             slot.name = name.to_string();
                         }
                         if let Some(args) = tc["function"]["arguments"].as_str() {
@@ -285,7 +291,10 @@ impl LLMProvider for OpenAIProvider {
                     }
                 }
 
-                if let Some(reason) = value["choices"][0]["finish_reason"].as_str() {
+                if let Some(reason) = value["choices"][0]["finish_reason"]
+                    .as_str()
+                    .filter(|s| !s.is_empty())
+                {
                     finish_reason = Some(reason.to_string());
                 }
 

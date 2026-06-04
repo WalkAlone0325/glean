@@ -404,7 +404,7 @@ pub async fn run_chat(
                         };
                         let _ = app.emit("agent-tool-confirm", confirm_evt);
 
-                        let rx = confirmations.register(tc.id.clone()).await;
+                        let rx = confirmations.register(conv_id, tc.id.clone()).await;
                         let approved = match rx.await {
                             Ok(v) => v,
                             Err(_) => false,
@@ -441,7 +441,9 @@ pub async fn run_chat(
                     let _ = app.emit("agent-tool-result", result_evt);
 
                     let tool_msg_content = if let Some(e) = &error_str {
-                        format!("{{\"error\": \"{}\"}}", e.replace('"', "\\\""))
+                        serde_json::json!({ "error": e }).to_string()
+                    } else if result_str.is_empty() {
+                        "(empty)".to_string()
                     } else {
                         result_str.clone()
                     };

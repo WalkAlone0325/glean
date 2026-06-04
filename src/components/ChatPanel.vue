@@ -321,8 +321,8 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                   class="mb-2 space-y-1.5"
                 >
                   <details
-                    v-for="(tc, tidx) in msg.toolCalls"
-                    :key="tidx"
+                    v-for="tc in msg.toolCalls"
+                    :key="tc.callId"
                     class="rounded border border-border/60 bg-background/40 text-[11px]"
                   >
                     <summary class="flex cursor-pointer items-center gap-1.5 px-2 py-1 hover:bg-muted/40">
@@ -360,7 +360,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                         {{ tc.durationMs }}ms
                       </span>
                       <button
-                        v-if="tc.status === 'ok' && tc.undoable && tc.operationId !== undefined"
+                        v-if="tc.status === 'ok' && tc.operationId !== undefined && tc.operationId >= 0"
                         class="ml-2 flex items-center gap-0.5 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] hover:bg-muted"
                         title="撤销此操作"
                         @click.stop="onUndo(tc.operationId)"
