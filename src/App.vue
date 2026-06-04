@@ -217,7 +217,7 @@ function selectTag(tagName: string | null) {
                     v-for="tag in tags.all"
                     :key="tag.id"
                     :class="[
-                      'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs',
+                      'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm',
                       selectedTag === tag.name ? 'bg-muted font-medium' : 'hover:bg-muted',
                     ]"
                     @click="selectTag(tag.name)"
@@ -231,7 +231,7 @@ function selectTag(tagName: string | null) {
                   </a>
                   <a
                     v-if="selectedTag"
-                    class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+                    class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
                     @click="selectTag(null)"
                   >
                     {{ t('kind.all') }}

@@ -22,8 +22,8 @@ jobs:
         include:
           - platform: macos-latest
             args: "--target aarch64-apple-darwin"
-          - platform: macos-latest
-            args: "--target x86_64-apple-darwin"
+          # x86_64-apple-darwin 暂不支持：ort-sys (ONNX Runtime) 不提供该 target 预编译二进制
+          # Intel Mac 用户后续版本通过 ort-tract 或 link custom ORT 解决
     steps:
       - uses: actions/checkout@v4
 

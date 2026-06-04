@@ -129,7 +129,9 @@ pnpm tauri build
 
 ### macOS（Homebrew Cask 即将上线）
 
-1. 前往 [Releases](https://github.com/WalkAlone0325/glean/releases) 下载最新 `Glean_<version>_aarch64.dmg`（Apple Silicon）或 `x86_64.dmg`（Intel）
+> ⚠️ **当前仅支持 Apple Silicon (M1/M2/M3/M4)**。Intel Mac 支持在规划中（依赖 ort-sys 的 x86_64 预编译包）。
+
+1. 前往 [Releases](https://github.com/WalkAlone0325/glean/releases) 下载最新 `Glean_<version>_aarch64.dmg`
 2. 打开 `.dmg`，将 Glean 拖入 Applications
 3. 首次启动若提示"无法验证开发者"，在终端运行：
    ```bash

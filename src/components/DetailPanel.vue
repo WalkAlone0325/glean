@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { ExternalLink, Copy, Loader2, FolderOpen, Plus, X } from "@lucide/vue";
@@ -12,6 +12,17 @@ import hljs from "highlight.js/lib/common";
 import TagBadge from "./TagBadge.vue";
 
 const { t } = useI18n();
+
+const colorOptions = [
+  { value: '', label: t('detail.no_color'), hex: '#888' },
+  { value: 'red', label: t('detail.color_red'), hex: '#ef4444' },
+  { value: 'orange', label: t('detail.color_orange'), hex: '#f97316' },
+  { value: 'yellow', label: t('detail.color_yellow'), hex: '#eab308' },
+  { value: 'green', label: t('detail.color_green'), hex: '#10b981' },
+  { value: 'blue', label: t('detail.color_blue'), hex: '#3b82f6' },
+  { value: 'purple', label: t('detail.color_purple'), hex: '#a855f7' },
+  { value: 'pink', label: t('detail.color_pink'), hex: '#ec4899' },
+];
 const emit = defineEmits<{ close: [] }>();
 const store = useFilesStore();
 const toast = useToastStore();
@@ -21,6 +32,7 @@ const previewLoading = ref(false);
 const previewError = ref<string | null>(null);
 const fileTags = ref<TagSummary[]>([]);
 const showTagPicker = ref(false);
+const tagNameInput = ref<HTMLInputElement | null>(null);
 const newTagName = ref("");
 const newTagColor = ref("");
 
@@ -209,12 +221,17 @@ async function addNewTag() {
 watch(
   () => file.value?.id,
   () => {
-    loadPreview();
     loadFileTags();
     showTagPicker.value = false;
   },
-  { immediate: true },
 );
+
+watch(showTagPicker, (v) => {
+  if (v) {
+    newTagColor.value = "";
+    nextTick(() => tagNameInput.value?.focus());
+  }
+});
 </script>
 
 <template>
@@ -280,7 +297,7 @@ watch(
         </div>
       </div>
 
-      <div v-if="fileTags.length || showTagPicker" class="border-b border-border p-3">
+      <div class="border-b border-border p-3">
         <div class="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
           {{ t('detail.tags') }}
           <button
@@ -303,49 +320,56 @@ watch(
             @remove="removeTag(t.id)"
           />
         </div>
-        <div v-if="showTagPicker" class="mt-1.5 space-y-1.5">
+        <div v-if="showTagPicker" class="mt-2 space-y-2">
           <div class="flex items-center gap-1.5">
-            <select
-              v-model="newTagColor"
-              class="rounded border border-border bg-background px-1 py-0.5 text-[10px]"
-            >
-              <option value="">{{ t('detail.no_color') }}</option>
-              <option value="red">{{ t('detail.color_red') }}</option>
-              <option value="orange">{{ t('detail.color_orange') }}</option>
-              <option value="yellow">{{ t('detail.color_yellow') }}</option>
-              <option value="green">{{ t('detail.color_green') }}</option>
-              <option value="blue">{{ t('detail.color_blue') }}</option>
-              <option value="purple">{{ t('detail.color_purple') }}</option>
-              <option value="pink">{{ t('detail.color_pink') }}</option>
-            </select>
             <input
+              ref="tagNameInput"
               v-model="newTagName"
               :placeholder="t('detail.new_tag_placeholder')"
-              class="flex-1 rounded border border-border bg-background px-2 py-0.5 text-[11px] outline-none focus:border-primary"
+              class="flex-1 rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:border-primary"
               @keydown.enter="addNewTag"
             />
             <button
-              class="rounded bg-primary px-2 py-0.5 text-[11px] text-primary-foreground hover:opacity-90"
+              class="rounded bg-primary px-2 py-1 text-xs text-primary-foreground hover:opacity-90 disabled:opacity-40"
               :disabled="!newTagName.trim()"
               @click="addNewTag"
             >
               {{ t('detail.add') }}
             </button>
             <button
-              class="rounded px-1.5 py-0.5 text-[11px] hover:bg-muted"
+              class="rounded px-1.5 py-1 text-xs hover:bg-muted"
               @click="showTagPicker = false"
             >
               {{ t('detail.cancel') }}
             </button>
           </div>
-          <div class="flex flex-wrap gap-1">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button
+              v-for="c in colorOptions"
+              :key="c.value"
+              :title="c.label"
+              :class="[
+                'flex size-5 items-center justify-center rounded-full border transition-all',
+                newTagColor === c.value
+                  ? 'border-foreground ring-1 ring-foreground ring-offset-1 ring-offset-background'
+                  : 'border-transparent hover:scale-110',
+              ]"
+              :style="{ backgroundColor: c.hex }"
+              @click="newTagColor = c.value"
+            />
+          </div>
+          <div v-if="tags.all.length" class="flex flex-wrap gap-1">
             <button
               v-for="t in tags.all"
               v-show="!fileTags.find((ft) => ft.id === t.id)"
               :key="'all-' + t.id"
-              class="rounded border border-border px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100"
+              class="inline-flex items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100"
               @click="addExistingTag(t.id)"
             >
+              <span
+                class="inline-block size-2 rounded-full"
+                :style="{ backgroundColor: t.color || '#888' }"
+              />
               {{ t.name }}
             </button>
           </div>

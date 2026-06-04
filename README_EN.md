@@ -86,7 +86,7 @@ Glean solves the **"I have 5000 files on my Mac, I know I've seen it, but I can'
 
 ### macOS
 
-1. Go to [Releases](https://github.com/WalkAlone0325/glean/releases) and download `Glean_<version>_aarch64.dmg` (Apple Silicon) or `x86_64.dmg` (Intel)
+> ⚠️ **Apple Silicon only (M1/M2/M3/M4) for now.** Intel Mac support is planned (blocked by `ort-sys` x86_64 prebuilt availability).
 2. Open the `.dmg` and drag Glean to Applications
 3. On first launch, if you see "Cannot verify developer", run:
    ```bash

@@ -771,7 +771,8 @@ pub async fn list_tags(
     let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn
         .prepare(
-            "SELECT t.id, t.name, t.color, (SELECT COUNT(*) FROM file_tags ft WHERE ft.tag_id = t.id)
+            "SELECT t.id, t.name, t.color,
+               (SELECT COUNT(*) FROM file_tags ft JOIN files f ON f.id = ft.file_id WHERE ft.tag_id = t.id)
              FROM tags t ORDER BY t.name",
         )
         .map_err(|e| e.to_string())?;
