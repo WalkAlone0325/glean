@@ -74,6 +74,7 @@ const currentKindLabel = computed(() => {
 
 onMounted(async () => {
   await app.bootstrap();
+  app.applyTheme(app.theme);
   if (app.indexedFolders.length > 0) {
     await files.reload();
   }

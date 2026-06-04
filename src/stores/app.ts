@@ -21,6 +21,8 @@ export const useAppStore = defineStore(
     const stats = ref<Stats>({ files: 0, chunks: 0, tags: 0 });
     const indexedFolders = ref<string[]>([]);
     const ready = ref(false);
+    const theme = ref<"light" | "dark" | "system">("system");
+    const locale = ref("zh-CN");
     const embedding = ref<EmbedProgress>({
       embedded: 0,
       total: 0,
@@ -59,7 +61,20 @@ export const useAppStore = defineStore(
       embedding.value = p;
     }
 
-    return { stats, indexedFolders, ready, embedding, bootstrap, refreshStats, updateEmbedding };
+    function applyTheme(t: "light" | "dark" | "system") {
+      theme.value = t;
+      const html = document.documentElement;
+      if (t === "system") {
+        html.classList.remove("light", "dark");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        html.classList.add(prefersDark ? "dark" : "light");
+      } else {
+        html.classList.remove("light", "dark");
+        html.classList.add(t);
+      }
+    }
+
+    return { stats, indexedFolders, ready, embedding, theme, locale, applyTheme, bootstrap, refreshStats, updateEmbedding };
   },
-  { persist: { pick: ["indexedFolders"] } },
+  { persist: { pick: ["indexedFolders", "theme", "locale"] } },
 );
