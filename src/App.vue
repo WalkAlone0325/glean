@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play, MessageSquare, Star, Clock } from "@lucide/vue";
+import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play, MessageSquare, Star, PanelLeftClose, PanelLeftOpen, X } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
@@ -29,6 +29,8 @@ const paused = ref(false);
 const showKindMenu = ref(false);
 const showSettings = ref(false);
 const showFirstRun = ref(true);
+const sidebarCollapsed = ref(false);
+const detailCollapsed = ref(false);
 
 async function togglePause() {
   if (paused.value) {
@@ -144,62 +146,81 @@ watch(() => app.locale, (loc) => {
     </header>
 
     <div class="flex flex-1 overflow-hidden">
-      <aside class="w-56 border-r border-border bg-muted/30 p-3">
-        <nav class="space-y-1 text-sm">
-          <a
-            :class="[
-              'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5',
-              !files.showRecent && !files.showFavorites
-                ? 'bg-muted'
-                : 'hover:bg-muted',
-            ]"
-            @click="files.setViewMode('all')"
-          >
-            <Folder class="size-4" />
-            {{ t('sidebar.all_files') }}
-            <span class="ml-auto text-xs text-muted-foreground">{{ app.stats.files }}</span>
-          </a>
-          <a
-            :class="[
-              'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5',
-              files.showRecent ? 'bg-muted' : 'hover:bg-muted',
-            ]"
-            @click="files.toggleRecent()"
-          >
-            <FileText class="size-4" />
-            {{ t('sidebar.recent') }}
-          </a>
-          <a
-            :class="[
-              'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5',
-              files.showFavorites ? 'bg-muted' : 'hover:bg-muted',
-            ]"
-            @click="files.toggleFavorites()"
-          >
-            <Star class="size-4" />
-            {{ t('sidebar.favorites') }}
-            <span v-if="files.favoriteIds.size" class="ml-auto text-xs text-muted-foreground">{{ files.favoriteIds.size }}</span>
-          </a>
-        </nav>
-        <div class="mt-6">
-          <div class="mb-2 px-2 text-xs uppercase tracking-wide text-muted-foreground">
-            {{ t('sidebar.indexed_folders') }}
-          </div>
-          <div v-if="!app.indexedFolders?.length" class="px-2 text-xs text-muted-foreground">
-            {{ t('sidebar.no_folders') }}
-          </div>
-          <ul v-else class="space-y-1 text-xs">
-            <li
-              v-for="f in app.indexedFolders"
-              :key="f"
-              class="truncate rounded-md px-2 py-1 text-muted-foreground"
-              :title="f"
+      <aside :class="['border-r border-border bg-muted/30 transition-all', sidebarCollapsed ? 'w-0 overflow-hidden' : 'w-56']">
+        <div v-if="!sidebarCollapsed" class="h-full p-3">
+          <div class="mb-1 flex items-center justify-end">
+            <button
+              class="rounded p-0.5 text-muted-foreground hover:bg-muted transition-colors"
+              :title="t('sidebar.collapse')"
+              @click="sidebarCollapsed = true"
             >
-              {{ f }}
-            </li>
-          </ul>
+              <PanelLeftClose class="size-3.5" />
+            </button>
+          </div>
+          <nav class="space-y-1 text-sm">
+            <a
+              :class="[
+                'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5',
+                !files.showRecent && !files.showFavorites
+                  ? 'bg-muted'
+                  : 'hover:bg-muted',
+              ]"
+              @click="files.setViewMode('all')"
+            >
+              <Folder class="size-4" />
+              {{ t('sidebar.all_files') }}
+              <span class="ml-auto text-xs text-muted-foreground">{{ app.stats.files }}</span>
+            </a>
+            <a
+              :class="[
+                'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5',
+                files.showRecent ? 'bg-muted' : 'hover:bg-muted',
+              ]"
+              @click="files.toggleRecent()"
+            >
+              <FileText class="size-4" />
+              {{ t('sidebar.recent') }}
+            </a>
+            <a
+              :class="[
+                'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5',
+                files.showFavorites ? 'bg-muted' : 'hover:bg-muted',
+              ]"
+              @click="files.toggleFavorites()"
+            >
+              <Star class="size-4" />
+              {{ t('sidebar.favorites') }}
+              <span v-if="files.favoriteIds.size" class="ml-auto text-xs text-muted-foreground">{{ files.favoriteIds.size }}</span>
+            </a>
+          </nav>
+          <div class="mt-6">
+            <div class="mb-2 px-2 text-xs uppercase tracking-wide text-muted-foreground">
+              {{ t('sidebar.indexed_folders') }}
+            </div>
+            <div v-if="!app.indexedFolders?.length" class="px-2 text-xs text-muted-foreground">
+              {{ t('sidebar.no_folders') }}
+            </div>
+            <ul v-else class="space-y-1 text-xs">
+              <li
+                v-for="f in app.indexedFolders"
+                :key="f"
+                class="truncate rounded-md px-2 py-1 text-muted-foreground"
+                :title="f"
+              >
+                {{ f }}
+              </li>
+            </ul>
+          </div>
         </div>
       </aside>
+      <div
+        v-if="sidebarCollapsed"
+        class="flex w-6 shrink-0 cursor-pointer items-start justify-center border-r border-border bg-muted/30 pt-4 transition-colors hover:bg-muted/50"
+        :title="t('sidebar.expand')"
+        @click="sidebarCollapsed = false"
+      >
+        <PanelLeftOpen class="size-3.5 text-muted-foreground" />
+      </div>
 
       <main class="flex flex-1 flex-col overflow-hidden">
         <div
@@ -329,8 +350,16 @@ watch(() => app.locale, (loc) => {
             <div class="flex-1 overflow-hidden">
               <FileList />
             </div>
-            <DetailPanel />
+            <DetailPanel @close="detailCollapsed = true" />
             <ChatPanel />
+            <div
+              v-if="detailCollapsed && !chat.panelOpen"
+              class="flex w-6 shrink-0 cursor-pointer items-start justify-center border-l border-border bg-muted/30 pt-4 transition-colors hover:bg-muted/50"
+              :title="t('detail.collapse')"
+              @click="detailCollapsed = false"
+            >
+              <PanelLeftOpen class="size-3.5 text-muted-foreground rotate-180" />
+            </div>
           </div>
         </template>
       </main>

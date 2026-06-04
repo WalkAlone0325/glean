@@ -2,7 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { ExternalLink, Copy, Loader2, FolderOpen, Plus } from "@lucide/vue";
+import { ExternalLink, Copy, Loader2, FolderOpen, Plus, X } from "@lucide/vue";
 import { useFilesStore } from "../stores/files";
 import { useToastStore } from "../stores/toast";
 import { useTagsStore, type TagSummary } from "../stores/tags";
@@ -12,6 +12,7 @@ import hljs from "highlight.js/lib/common";
 import TagBadge from "./TagBadge.vue";
 
 const { t } = useI18n();
+const emit = defineEmits<{ close: [] }>();
 const store = useFilesStore();
 const toast = useToastStore();
 const tags = useTagsStore();
@@ -94,7 +95,7 @@ const highlightedHtml = computed(() => {
   }
   if (isCode.value && previewLanguage.value) {
     try {
-      return `<pre class="rounded-lg bg-zinc-900/95 p-3 text-[11px] overflow-x-auto leading-relaxed"><code class="hljs language-${previewLanguage.value}">${
+      return `<pre class="rounded-md bg-zinc-900 p-3 text-[11px] overflow-x-auto"><code class="hljs language-${previewLanguage.value}">${
         hljs.highlight(preview.value, {
           language: previewLanguage.value,
           ignoreIllegals: true,
@@ -106,7 +107,7 @@ const highlightedHtml = computed(() => {
   if (isCode.value) {
     try {
       const auto = hljs.highlightAuto(preview.value);
-      return `<pre class="rounded-lg bg-zinc-900/95 p-3 text-[11px] overflow-x-auto leading-relaxed"><code class="hljs">${auto.value}</code></pre>`;
+      return `<pre class="rounded-md bg-zinc-900 p-3 text-[11px] overflow-x-auto"><code class="hljs">${auto.value}</code></pre>`;
     } catch {
     }
   }
@@ -114,7 +115,7 @@ const highlightedHtml = computed(() => {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-  return `<pre class="whitespace-pre-wrap break-all font-mono text-[11px] leading-relaxed">${escaped}</pre>`;
+  return `<pre class="whitespace-pre-wrap break-all font-mono text-[11px] leading-snug">${escaped}</pre>`;
 });
 
 async function loadPreview() {
@@ -217,67 +218,74 @@ watch(
 </script>
 
 <template>
-  <aside class="flex h-full w-72 flex-col border-l border-border bg-background">
-    <div v-if="!file" class="flex flex-1 items-center justify-center text-xs text-muted-foreground/60">
+  <aside class="flex h-full w-72 flex-col border-l border-border">
+    <div v-if="!file" class="flex flex-1 items-center justify-center text-xs text-muted-foreground">
       {{ t('filelist.no_preview') }}
     </div>
     <template v-else>
       <div class="border-b border-border p-4">
-        <div class="flex items-start gap-3">
-          <component :is="Icon" class="mt-0.5 size-6 shrink-0 text-muted-foreground/60" />
+        <div class="flex items-start gap-2">
+          <component :is="Icon" class="mt-0.5 size-5 shrink-0 text-muted-foreground" />
           <div class="min-w-0 flex-1">
-            <div class="break-all text-sm font-medium leading-snug">{{ file.name }}</div>
-            <div class="mt-0.5 text-[11px] text-muted-foreground/60">
+            <div class="break-all text-sm font-medium">{{ file.name }}</div>
+            <div class="mt-0.5 text-xs text-muted-foreground">
               .{{ file.ext || "?" }} · {{ kindLabel(file.kind) }}
             </div>
           </div>
-        </div>
-        <div class="mt-3 flex gap-1.5">
           <button
-            class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground shadow-xs transition hover:brightness-110 active:scale-[0.98]"
+            class="rounded p-0.5 text-muted-foreground hover:bg-muted transition-colors"
+            :title="t('settings.close')"
+            @click="emit('close')"
+          >
+            <X class="size-3.5" />
+          </button>
+        </div>
+        <div class="mt-3 flex gap-1">
+          <button
+            class="flex flex-1 items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-xs text-primary-foreground hover:opacity-90"
             @click="openExternally"
           >
             <ExternalLink class="size-3" />
             {{ t('filelist.open') }}
           </button>
           <button
-            class="inline-flex items-center justify-center rounded-md bg-muted px-2 py-1.5 text-xs hover:bg-muted/80 transition-colors"
+            class="flex items-center justify-center rounded-md bg-muted px-2 py-1.5 text-xs hover:bg-muted/80"
             :title="t('filelist.reveal')"
             @click="revealInFinder"
           >
-            <FolderOpen class="size-3.5" />
+            <FolderOpen class="size-3" />
           </button>
           <button
-            class="inline-flex items-center justify-center rounded-md bg-muted px-2 py-1.5 text-xs hover:bg-muted/80 transition-colors"
+            class="flex items-center justify-center rounded-md bg-muted px-2 py-1.5 text-xs hover:bg-muted/80"
             :title="t('filelist.copy_path')"
             @click="copyPath"
           >
-            <Copy class="size-3.5" />
+            <Copy class="size-3" />
           </button>
         </div>
       </div>
 
-      <div class="space-y-2 border-b border-border px-4 py-3 text-xs">
+      <div class="space-y-1.5 border-b border-border p-4 text-xs">
         <div class="flex justify-between gap-2">
-          <span class="text-muted-foreground/60">{{ t('detail.size') }}</span>
-          <span class="tabular-nums">{{ formatSize(file.size) }}</span>
+          <span class="text-muted-foreground">{{ t('detail.size') }}</span>
+          <span>{{ formatSize(file.size) }}</span>
         </div>
         <div class="flex justify-between gap-2">
-          <span class="text-muted-foreground/60">{{ t('detail.mtime') }}</span>
-          <span class="truncate tabular-nums">{{ formatDateTime(file.mtime) }}</span>
+          <span class="text-muted-foreground">{{ t('detail.mtime') }}</span>
+          <span class="truncate">{{ formatDateTime(file.mtime) }}</span>
         </div>
         <div class="flex justify-between gap-2">
-          <span class="text-muted-foreground/60">{{ t('detail.kind') }}</span>
+          <span class="text-muted-foreground">{{ t('detail.kind') }}</span>
           <span>{{ kindLabel(file.kind) }}</span>
         </div>
       </div>
 
       <div v-if="fileTags.length || showTagPicker" class="border-b border-border p-3">
-        <div class="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground/60">
+        <div class="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
           {{ t('detail.tags') }}
           <button
             v-if="!showTagPicker"
-            class="ml-auto rounded p-0.5 hover:bg-muted transition-colors"
+            class="ml-auto rounded p-0.5 hover:bg-muted"
             :title="t('detail.add_tag')"
             @click="showTagPicker = true"
           >
@@ -299,7 +307,7 @@ watch(
           <div class="flex items-center gap-1.5">
             <select
               v-model="newTagColor"
-              class="rounded border border-border bg-background px-1 py-0.5 text-[10px] outline-none"
+              class="rounded border border-border bg-background px-1 py-0.5 text-[10px]"
             >
               <option value="">{{ t('detail.no_color') }}</option>
               <option value="red">{{ t('detail.color_red') }}</option>
@@ -313,18 +321,18 @@ watch(
             <input
               v-model="newTagName"
               :placeholder="t('detail.new_tag_placeholder')"
-              class="flex-1 rounded border border-border bg-background px-2 py-0.5 text-[11px] outline-none focus:border-accent"
+              class="flex-1 rounded border border-border bg-background px-2 py-0.5 text-[11px] outline-none focus:border-primary"
               @keydown.enter="addNewTag"
             />
             <button
-              class="rounded bg-accent px-2 py-0.5 text-[11px] text-accent-foreground hover:brightness-110 transition-all"
+              class="rounded bg-primary px-2 py-0.5 text-[11px] text-primary-foreground hover:opacity-90"
               :disabled="!newTagName.trim()"
               @click="addNewTag"
             >
               {{ t('detail.add') }}
             </button>
             <button
-              class="rounded px-1.5 py-0.5 text-[11px] hover:bg-muted transition-colors"
+              class="rounded px-1.5 py-0.5 text-[11px] hover:bg-muted"
               @click="showTagPicker = false"
             >
               {{ t('detail.cancel') }}
@@ -335,7 +343,7 @@ watch(
               v-for="t in tags.all"
               v-show="!fileTags.find((ft) => ft.id === t.id)"
               :key="'all-' + t.id"
-              class="rounded border border-border/50 px-1.5 py-0.5 text-[10px] text-muted-foreground/60 hover:text-foreground transition-colors"
+              class="rounded border border-border px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100"
               @click="addExistingTag(t.id)"
             >
               {{ t.name }}
@@ -345,8 +353,8 @@ watch(
       </div>
 
       <div class="flex-1 overflow-auto">
-        <div v-if="isImage && imageUrl" class="flex h-full items-center justify-center bg-muted/20 p-4">
-          <img :src="imageUrl" :alt="file.name" class="max-h-full max-w-full object-contain rounded-md" />
+        <div v-if="isImage && imageUrl" class="flex h-full items-center justify-center bg-muted/30 p-4">
+          <img :src="imageUrl" :alt="file.name" class="max-h-full max-w-full object-contain" />
         </div>
         <div v-else-if="isPdf && pdfUrl" class="h-full">
           <iframe :src="pdfUrl" class="h-full w-full border-0" :title="file.name" />
@@ -364,14 +372,14 @@ watch(
           </div>
           <div
             v-else-if="preview"
-            class="markdown-body text-[12px]"
+            class="markdown-body"
             v-html="highlightedHtml"
           />
-          <div v-else class="text-xs text-muted-foreground/60">{{ t('filelist.preview_error') }}</div>
+          <div v-else class="text-xs text-muted-foreground">{{ t('filelist.preview_error') }}</div>
         </div>
         <div
           v-else
-          class="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground/60"
+          class="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground"
         >
           {{ t('filelist.no_preview_type') }}
         </div>

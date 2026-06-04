@@ -13,7 +13,9 @@
     "recent": "最近查看",
     "favorites": "星标文件",
     "indexed_folders": "已索引文件夹",
-    "no_folders": "尚未索引任何文件夹"
+    "no_folders": "尚未索引任何文件夹",
+    "collapse": "收起侧栏",
+    "expand": "展开侧栏"
   },
   "empty_state": {
     "title": "还没有索引任何文件夹",

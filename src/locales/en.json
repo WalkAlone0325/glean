@@ -13,7 +13,9 @@
     "recent": "Recent",
     "favorites": "Favorites",
     "indexed_folders": "Indexed Folders",
-    "no_folders": "No folders indexed yet"
+    "no_folders": "No folders indexed yet",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar"
   },
   "empty_state": {
     "title": "No folders indexed yet",
