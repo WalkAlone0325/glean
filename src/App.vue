@@ -7,6 +7,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useAppStore, type EmbedProgress } from "./stores/app";
 import { useSearchStore } from "./stores/search";
 import { useFilesStore } from "./stores/files";
+import { useTagsStore } from "./stores/tags";
 import SearchPalette from "./components/SearchPalette.vue";
 import FileList from "./components/FileList.vue";
 import DetailPanel from "./components/DetailPanel.vue";
@@ -18,6 +19,7 @@ import { useChatStore } from "./stores/chat";
 const app = useAppStore();
 const search = useSearchStore();
 const files = useFilesStore();
+const tags = useTagsStore();
 const chat = useChatStore();
 const indexing = ref(false);
 const paused = ref(false);
@@ -75,6 +77,8 @@ onMounted(async () => {
   if (app.indexedFolders.length > 0) {
     await files.reload();
   }
+  files.loadFavoriteFiles();
+  tags.loadTags();
   await listen<{ total: number; duration_ms: number }>("index-complete", async () => {
     indexing.value = false;
     await app.refreshStats();
