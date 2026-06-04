@@ -5,6 +5,7 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import App from "./App.vue";
 import { useAppStore } from "./stores/app";
 import { useToastStore } from "./stores/toast";
+import i18n from "./locales/i18n";
 import "./styles.css";
 
 const app = createApp(App);
@@ -13,6 +14,7 @@ const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);
 app.use(pinia);
 app.use(VueQueryPlugin);
+app.use(i18n);
 
 app.config.errorHandler = (err) => {
   console.error("[Vue error]", err);

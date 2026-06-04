@@ -89,11 +89,13 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
 
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex items-center gap-1.5 border-b border-border px-3 py-1 text-[10px] text-muted-foreground">
+    <div class="flex items-center gap-0.5 border-b border-border bg-muted/10 px-3 py-1.5 text-xs text-muted-foreground">
       <button
         :class="[
-          'rounded px-2 py-0.5',
-          !store.showRecent && !store.showFavorites ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+          'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+          !store.showRecent && !store.showFavorites
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground',
         ]"
         @click="store.setViewMode('all')"
       >
@@ -101,8 +103,10 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       </button>
       <button
         :class="[
-          'rounded px-2 py-0.5',
-          store.showRecent ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+          'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+          store.showRecent
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground',
         ]"
         @click="store.toggleRecent()"
       >
@@ -110,8 +114,10 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       </button>
       <button
         :class="[
-          'rounded px-2 py-0.5',
-          store.showFavorites ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
+          'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+          store.showFavorites
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground',
         ]"
         @click="store.toggleFavorites()"
       >
@@ -119,10 +125,10 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       </button>
     </div>
     <div
-      class="grid grid-cols-[1fr_80px_70px_120px] gap-3 border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground"
+      class="grid grid-cols-[1fr_80px_70px_120px] gap-3 border-b border-border bg-muted/10 px-3 py-2 text-xs font-medium text-muted-foreground/80"
     >
       <button
-        class="flex items-center gap-1 text-left hover:text-foreground"
+        class="flex items-center gap-1 text-left transition-colors hover:text-foreground"
         @click="store.toggleSort('name')"
       >
         名称
@@ -131,7 +137,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         </span>
       </button>
       <button
-        class="flex items-center gap-1 hover:text-foreground"
+        class="flex items-center gap-1 transition-colors hover:text-foreground"
         @click="store.toggleSort('ext')"
       >
         类型
@@ -140,7 +146,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         </span>
       </button>
       <button
-        class="flex items-center gap-1 hover:text-foreground"
+        class="flex items-center gap-1 transition-colors hover:text-foreground"
         @click="store.toggleSort('size')"
       >
         大小
@@ -149,7 +155,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         </span>
       </button>
       <button
-        class="flex items-center gap-1 hover:text-foreground"
+        class="flex items-center gap-1 transition-colors hover:text-foreground"
         @click="store.toggleSort('mtime')"
       >
         修改时间
@@ -198,12 +204,12 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         >
           <div
             :class="[
-              'grid h-full grid-cols-[1fr_80px_70px_120px] items-center gap-3 px-3 text-sm cursor-default',
+              'grid h-full grid-cols-[1fr_80px_70px_120px] items-center gap-3 px-3 text-sm cursor-default transition-colors',
               isSelected(store.filtered[vi.index]!)
-                ? 'bg-primary/10 border-l-2 border-primary'
+                ? 'bg-primary/8 border-l-2 border-primary'
                 : isActive(store.filtered[vi.index]!)
-                  ? 'bg-muted'
-                  : '',
+                  ? 'bg-muted/60'
+                  : 'hover:bg-muted/30',
               isSelected(store.filtered[vi.index]!)
                 ? 'pl-[10px]'
                 : 'pl-3',
@@ -258,19 +264,23 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
 
     <div
       v-if="store.items.length"
-      class="border-t border-border px-3 py-1 text-[10px] text-muted-foreground"
+      class="flex items-center gap-2 border-t border-border bg-muted/10 px-3 py-1.5 text-[10px] text-muted-foreground/70"
     >
       <template v-if="store.showFavorites">
-        {{ store.filtered.length }} 个星标文件
+        <span>{{ store.filtered.length }} 个星标文件</span>
       </template>
       <template v-else-if="store.showRecent">
-        {{ store.filtered.length }} 个最近查看
+        <span>{{ store.filtered.length }} 个最近查看</span>
       </template>
       <template v-else-if="store.nameFilter">
-        过滤 {{ store.filtered.length }}/{{ store.items.length }}
+        <span>过滤 {{ store.filtered.length }}/{{ store.items.length }}</span>
       </template>
       <template v-else>
-        共 {{ store.items.length }} 个文件 · 双击打开 · 右键更多操作
+        <span>共 {{ store.items.length }} 个文件</span>
+        <span class="text-muted-foreground/40">·</span>
+        <span>双击打开</span>
+        <span class="text-muted-foreground/40">·</span>
+        <span>右键更多操作</span>
       </template>
     </div>
 

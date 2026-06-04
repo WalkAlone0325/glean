@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { Search, Folder, FileText, Settings, Loader2, FolderOpen, Sparkles, Filter, Pause, Play, MessageSquare } from "@lucide/vue";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
@@ -21,6 +22,7 @@ const app = useAppStore();
 const search = useSearchStore();
 const files = useFilesStore();
 const tags = useTagsStore();
+const { locale: i18nLocale } = useI18n();
 const chat = useChatStore();
 const indexing = ref(false);
 const paused = ref(false);
@@ -77,6 +79,7 @@ const currentKindLabel = computed(() => {
 onMounted(async () => {
   await app.bootstrap();
   app.applyTheme(app.theme);
+  i18nLocale.value = app.locale;
   if (app.indexedFolders.length > 0) {
     await files.reload();
   }
@@ -105,103 +108,118 @@ watch(
     if (n !== old && n > 0) await files.reload();
   },
 );
+
+watch(() => app.locale, (loc) => {
+  i18nLocale.value = loc;
+});
 </script>
 
 <template>
-  <div class="flex h-screen w-screen flex-col bg-background text-foreground">
-    <header class="flex h-12 items-center gap-3 border-b border-border px-4" data-tauri-drag-region>
-      <span class="text-sm font-semibold tracking-tight">Glean</span>
-      <button
-        class="ml-4 flex flex-1 items-center gap-2 rounded-md bg-muted px-3 py-1.5 text-left text-sm text-muted-foreground transition hover:bg-muted/80"
-        @click="search.paletteOpen = true"
-      >
-        <Search class="size-4" />
-        <span class="flex-1">搜索文件、内容、命令...</span>
-        <kbd class="text-xs">⌘K</kbd>
-      </button>
-      <button
-        class="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-        aria-label="AI 助手"
-        title="AI 助手"
-        @click="chat.togglePanel()"
-      >
-        <MessageSquare class="size-4" />
-      </button>
-      <button
-        class="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-        aria-label="设置"
-        @click="showSettings = true"
-      >
-        <Settings class="size-4" />
-      </button>
-    </header>
-
-    <div class="flex flex-1 overflow-hidden">
-      <aside class="w-56 border-r border-border bg-muted/30 p-3">
-        <nav class="space-y-1 text-sm">
-          <a class="flex items-center gap-2 rounded-md bg-muted px-2 py-1.5">
-            <Folder class="size-4" />
-            所有文件
-            <span class="ml-auto text-xs text-muted-foreground">{{ app.stats.files }}</span>
-          </a>
-          <a class="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted">
-            <FileText class="size-4" />
-            最近查看
-          </a>
-        </nav>
-        <div class="mt-6">
-          <div class="mb-2 px-2 text-xs uppercase tracking-wide text-muted-foreground">
-            已索引文件夹
-          </div>
-          <div v-if="!app.indexedFolders?.length" class="px-2 text-xs text-muted-foreground">
-            尚未索引任何文件夹
-          </div>
-          <ul v-else class="space-y-1 text-xs">
-            <li
-              v-for="f in app.indexedFolders"
-              :key="f"
-              class="truncate rounded-md px-2 py-1 text-muted-foreground"
-              :title="f"
-            >
-              {{ f }}
-            </li>
-          </ul>
-        </div>
-      </aside>
-
-      <main class="flex flex-1 flex-col overflow-hidden">
-        <div
-          v-if="!app.indexedFolders?.length"
-          class="flex flex-1 flex-col items-center justify-center text-muted-foreground"
+    <div class="flex h-screen w-screen flex-col bg-background text-foreground">
+      <header class="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-muted/20 px-4" data-tauri-drag-region>
+        <span class="flex items-center gap-1.5 text-sm font-bold tracking-tight">
+          <Sparkles class="size-4 text-primary" />
+          Glean
+        </span>
+        <button
+          class="group ml-4 flex flex-1 items-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-left text-sm text-muted-foreground shadow-sm transition hover:border-muted-foreground/30 hover:bg-muted/50"
+          @click="search.paletteOpen = true"
         >
-          <p class="text-sm">还没有索引任何文件夹</p>
-          <button
-            :disabled="indexing"
-            class="mt-3 flex items-center gap-2 rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-            @click="pickAndIndex"
+          <Search class="size-4" />
+          <span class="flex-1">搜索文件、内容、命令...</span>
+          <kbd class="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tracking-wider">⌘K</kbd>
+        </button>
+        <button
+          class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+          aria-label="AI 助手"
+          title="AI 助手"
+          @click="chat.togglePanel()"
+        >
+          <MessageSquare class="size-4" />
+        </button>
+        <button
+          class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+          aria-label="设置"
+          @click="showSettings = true"
+        >
+          <Settings class="size-4" />
+        </button>
+      </header>
+
+      <div class="flex flex-1 overflow-hidden">
+        <aside class="flex w-52 shrink-0 flex-col border-r border-border bg-muted/20">
+          <nav class="space-y-0.5 p-2 pb-3 text-sm">
+            <a class="flex items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-1.5 font-medium text-primary">
+              <Folder class="size-4" />
+              所有文件
+              <span class="ml-auto text-xs tabular-nums text-primary/70">{{ app.stats.files }}</span>
+            </a>
+            <a class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <FileText class="size-4" />
+              最近查看
+            </a>
+          </nav>
+          <div class="mx-3 border-t border-border" />
+          <div class="flex-1 overflow-auto p-2 pt-3">
+            <div class="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              已索引文件夹
+            </div>
+            <div v-if="!app.indexedFolders?.length" class="px-2 text-xs text-muted-foreground">
+              尚未索引任何文件夹
+            </div>
+            <ul v-else class="space-y-0.5 text-xs">
+              <li
+                v-for="f in app.indexedFolders"
+                :key="f"
+                class="flex items-center gap-1.5 truncate rounded-md px-2 py-1 text-muted-foreground transition-colors hover:bg-muted"
+                :title="f"
+              >
+                <FolderOpen class="size-3.5 shrink-0" />
+                <span class="truncate">{{ f }}</span>
+              </li>
+            </ul>
+          </div>
+        </aside>
+
+        <main class="flex flex-1 flex-col overflow-hidden">
+          <div
+            v-if="!app.indexedFolders?.length"
+            class="flex flex-1 flex-col items-center justify-center gap-4 text-muted-foreground"
           >
-            <FolderOpen class="size-4" />
-            选择文件夹开始索引
-          </button>
-        </div>
+            <div class="rounded-2xl bg-muted/40 p-5">
+              <Search class="size-10 text-muted-foreground/40" />
+            </div>
+            <div class="text-center">
+              <p class="text-sm font-medium">还没有索引任何文件夹</p>
+              <p class="mt-1 text-xs opacity-60">添加文件夹后即可开始搜索和浏览文件</p>
+            </div>
+            <button
+              :disabled="indexing"
+              class="flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"
+              @click="pickAndIndex"
+            >
+              <FolderOpen class="size-4" />
+              选择文件夹开始索引
+            </button>
+          </div>
         <template v-else>
-          <div class="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-            <div class="flex flex-1 items-center gap-2 rounded-md bg-muted/50 px-2 py-1">
-              <Search class="size-3.5 text-muted-foreground" />
+          <div class="flex items-center gap-3 border-b border-border px-4 py-2">
+            <div class="flex flex-1 items-center gap-2 rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-sm shadow-sm transition-colors focus-within:border-muted-foreground/30">
+              <Search class="size-3.5 text-muted-foreground/60" />
               <input
                 :value="files.nameFilter"
                 placeholder="过滤当前列表..."
-                class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
                 @input="files.setNameFilter(($event.target as HTMLInputElement).value)"
               />
-              <span class="text-xs text-muted-foreground">
+              <span class="text-[11px] tabular-nums text-muted-foreground/50">
                 {{ files.filtered.length }}/{{ files.items.length }}
               </span>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5">
               <div class="relative">
                 <button
-                  class="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-muted/80"
+                  class="flex items-center gap-1 rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted/50"
                   @click="showKindMenu = !showKindMenu"
                 >
                   <Filter class="size-3" />
@@ -209,15 +227,15 @@ watch(
                 </button>
                 <div
                   v-if="showKindMenu"
-                  class="absolute right-0 top-full z-10 mt-1 w-32 rounded-md border border-border bg-background py-1 shadow-lg"
+                  class="absolute right-0 top-full z-10 mt-1 w-32 rounded-lg border border-border bg-background py-1 shadow-lg"
                   @mouseleave="showKindMenu = false"
                 >
                   <button
                     v-for="opt in kindOptions"
                     :key="String(opt.value)"
                     :class="[
-                      'block w-full px-3 py-1 text-left text-xs hover:bg-muted',
-                      files.kindFilter === opt.value ? 'font-medium text-foreground' : '',
+                      'block w-full px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted',
+                      files.kindFilter === opt.value ? 'font-medium text-foreground' : 'text-muted-foreground',
                     ]"
                     @click="files.setKindFilter(opt.value); showKindMenu = false"
                   >
@@ -227,7 +245,7 @@ watch(
               </div>
               <button
                 v-if="indexing"
-                class="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-muted/80"
+                class="flex items-center gap-1 rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted/50"
                 :title="paused ? '恢复索引' : '暂停索引'"
                 @click="togglePause"
               >
@@ -237,12 +255,12 @@ watch(
               </button>
               <div
                 v-if="app.embedding.phase === 'Downloading'"
-                class="group relative flex items-center gap-1.5 rounded-md bg-blue-500/10 px-2 py-1 text-[11px] text-blue-600 dark:text-blue-400"
+                class="group relative flex items-center gap-1.5 rounded-lg bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400"
               >
                 <Loader2 class="size-3 animate-spin" />
                 下载模型
                 <div
-                  class="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden w-64 rounded-md border border-border bg-background p-3 text-xs text-foreground shadow-lg group-hover:block"
+                  class="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden w-64 rounded-lg border border-border bg-background p-3 text-xs text-foreground shadow-lg group-hover:block"
                 >
                   <div class="mb-2 font-medium">下载 Embedding 模型</div>
                   <div class="mb-2 text-muted-foreground">
@@ -260,7 +278,7 @@ watch(
               </div>
               <div
                 v-else-if="app.embedding.phase === 'Embedding'"
-                class="flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-[11px] text-primary"
+                class="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-[11px] font-medium text-primary"
                 :title="`已向量化 ${app.embedding.embedded} / ${app.embedding.total} chunk`"
               >
                 <Sparkles class="size-3 animate-pulse" />
@@ -268,7 +286,7 @@ watch(
               </div>
               <div
                 v-else-if="app.embedding.phase === 'Completed'"
-                class="flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-600 dark:text-emerald-400"
+                class="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
                 :title="`共 ${app.stats.chunks} chunks 已向量化`"
               >
                 <Sparkles class="size-3" />
@@ -276,14 +294,15 @@ watch(
               </div>
               <div
                 v-else-if="app.embedding.phase === 'Failed'"
-                class="flex items-center gap-1.5 rounded-md bg-red-500/10 px-2 py-1 text-[11px] text-red-600 dark:text-red-400"
+                class="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 dark:text-red-400"
                 title="向量化失败，请查看日志"
               >
                 <Sparkles class="size-3" />
                 向量化失败
               </div>
+              <div class="mx-1 h-5 w-px bg-border" />
               <button
-                class="flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs transition hover:bg-muted/80 disabled:opacity-50"
+                class="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50"
                 @click="pickAndIndex"
               >
                 <Loader2 v-if="indexing && !paused" class="size-3 animate-spin" />
