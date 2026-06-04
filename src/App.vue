@@ -105,25 +105,25 @@ watch(
     <header class="flex h-12 items-center gap-3 border-b border-border px-4" data-tauri-drag-region>
       <span class="text-sm font-semibold tracking-tight">Glean</span>
       <button
-        @click="search.paletteOpen = true"
         class="ml-4 flex flex-1 items-center gap-2 rounded-md bg-muted px-3 py-1.5 text-left text-sm text-muted-foreground transition hover:bg-muted/80"
+        @click="search.paletteOpen = true"
       >
         <Search class="size-4" />
         <span class="flex-1">搜索文件、内容、命令...</span>
         <kbd class="text-xs">⌘K</kbd>
       </button>
       <button
-        @click="chat.togglePanel()"
         class="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
         aria-label="AI 助手"
         title="AI 助手"
+        @click="chat.togglePanel()"
       >
         <MessageSquare class="size-4" />
       </button>
       <button
-        @click="showSettings = true"
         class="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
         aria-label="设置"
+        @click="showSettings = true"
       >
         <Settings class="size-4" />
       </button>
@@ -169,9 +169,9 @@ watch(
         >
           <p class="text-sm">还没有索引任何文件夹</p>
           <button
-            @click="pickAndIndex"
             :disabled="indexing"
             class="mt-3 flex items-center gap-2 rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+            @click="pickAndIndex"
           >
             <FolderOpen class="size-4" />
             选择文件夹开始索引
@@ -183,9 +183,9 @@ watch(
               <Search class="size-3.5 text-muted-foreground" />
               <input
                 :value="files.nameFilter"
-                @input="files.setNameFilter(($event.target as HTMLInputElement).value)"
                 placeholder="过滤当前列表..."
                 class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                @input="files.setNameFilter(($event.target as HTMLInputElement).value)"
               />
               <span class="text-xs text-muted-foreground">
                 {{ files.filtered.length }}/{{ files.items.length }}
@@ -194,25 +194,25 @@ watch(
             <div class="flex items-center gap-2">
               <div class="relative">
                 <button
-                  @click="showKindMenu = !showKindMenu"
                   class="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-muted/80"
+                  @click="showKindMenu = !showKindMenu"
                 >
                   <Filter class="size-3" />
                   {{ currentKindLabel }}
                 </button>
                 <div
                   v-if="showKindMenu"
-                  @mouseleave="showKindMenu = false"
                   class="absolute right-0 top-full z-10 mt-1 w-32 rounded-md border border-border bg-background py-1 shadow-lg"
+                  @mouseleave="showKindMenu = false"
                 >
                   <button
                     v-for="opt in kindOptions"
                     :key="String(opt.value)"
-                    @click="files.setKindFilter(opt.value); showKindMenu = false"
                     :class="[
                       'block w-full px-3 py-1 text-left text-xs hover:bg-muted',
                       files.kindFilter === opt.value ? 'font-medium text-foreground' : '',
                     ]"
+                    @click="files.setKindFilter(opt.value); showKindMenu = false"
                   >
                     {{ opt.label }}
                   </button>
@@ -220,9 +220,9 @@ watch(
               </div>
               <button
                 v-if="indexing"
-                @click="togglePause"
                 class="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-muted/80"
                 :title="paused ? '恢复索引' : '暂停索引'"
+                @click="togglePause"
               >
                 <Play v-if="paused" class="size-3" />
                 <Pause v-else class="size-3" />
@@ -276,8 +276,8 @@ watch(
                 向量化失败
               </div>
               <button
-                @click="pickAndIndex"
                 class="flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1 text-xs transition hover:bg-muted/80 disabled:opacity-50"
+                @click="pickAndIndex"
               >
                 <Loader2 v-if="indexing && !paused" class="size-3 animate-spin" />
                 <FolderOpen v-else class="size-3" />

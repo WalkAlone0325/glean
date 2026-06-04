@@ -5,6 +5,8 @@ import { ExternalLink, Copy, Loader2, FolderOpen } from "@lucide/vue";
 import { useFilesStore } from "../stores/files";
 import { useToastStore } from "../stores/toast";
 import { kindIcon, kindLabel, formatSize, formatDateTime } from "../utils/fileKind";
+import { renderMarkdown } from "../utils/markdown";
+import hljs from "highlight.js/lib/common";
 
 const store = useFilesStore();
 const toast = useToastStore();
@@ -16,6 +18,10 @@ const file = computed(() => store.items.find((f) => f.id === store.selectedId) |
 const Icon = computed(() => kindIcon(file.value?.kind));
 
 const isImage = computed(() => file.value?.kind === "image");
+const isPdf = computed(() => file.value?.kind === "pdf");
+const isMarkdown = computed(() => file.value?.kind === "markdown");
+const isCode = computed(() => file.value?.kind === "code");
+const isHtml = computed(() => file.value?.kind === "html");
 const isText = computed(() => {
   const k = file.value?.kind;
   return k === "text" || k === "markdown" || k === "code" || k === "data" || k === "html";
@@ -24,6 +30,84 @@ const isText = computed(() => {
 const imageUrl = computed(() => {
   if (!isImage.value || !file.value) return null;
   return convertFileSrc(file.value.path);
+});
+
+const pdfUrl = computed(() => {
+  if (!isPdf.value || !file.value) return null;
+  return convertFileSrc(file.value.path);
+});
+
+const htmlUrl = computed(() => {
+  if (!isHtml.value || !file.value) return null;
+  return convertFileSrc(file.value.path);
+});
+
+const previewLanguage = computed(() => {
+  if (!file.value) return null;
+  const ext = file.value.ext?.toLowerCase();
+  if (!ext) return null;
+  if (hljs.getLanguage(ext)) return ext;
+  switch (ext) {
+    case "ts":
+    case "tsx":
+      return "typescript";
+    case "js":
+    case "jsx":
+      return "javascript";
+    case "py":
+      return "python";
+    case "rb":
+      return "ruby";
+    case "rs":
+      return "rust";
+    case "go":
+      return "go";
+    case "kt":
+      return "kotlin";
+    case "sh":
+    case "bash":
+    case "zsh":
+      return "bash";
+    case "md":
+    case "markdown":
+      return "markdown";
+    default:
+      return null;
+  }
+});
+
+const highlightedHtml = computed(() => {
+  if (!preview.value) return "";
+  if (isMarkdown.value) {
+    return renderMarkdown(preview.value);
+  }
+  if (isCode.value && previewLanguage.value) {
+    try {
+      return `<pre class="rounded-md bg-zinc-900 p-3 text-[11px] overflow-x-auto"><code class="hljs language-${previewLanguage.value}">${
+        hljs.highlight(preview.value, {
+          language: previewLanguage.value,
+          ignoreIllegals: true,
+        }).value
+      }</code></pre>`;
+    } catch {
+      // fall through to plain
+    }
+  }
+  // auto-detect
+  if (isCode.value) {
+    try {
+      const auto = hljs.highlightAuto(preview.value);
+      return `<pre class="rounded-md bg-zinc-900 p-3 text-[11px] overflow-x-auto"><code class="hljs">${auto.value}</code></pre>`;
+    } catch {
+      // fall through
+    }
+  }
+  // plain text fallback
+  const escaped = preview.value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<pre class="whitespace-pre-wrap break-all font-mono text-[11px] leading-snug">${escaped}</pre>`;
 });
 
 async function loadPreview() {
@@ -36,7 +120,7 @@ async function loadPreview() {
   try {
     preview.value = await invoke<string>("read_text_preview", {
       path: file.value.path,
-      maxBytes: 16 * 1024,
+      maxBytes: 32 * 1024,
     });
   } catch (e) {
     previewError.value = String(e);
@@ -89,21 +173,23 @@ watch(
         </div>
         <div class="mt-3 flex gap-1">
           <button
-            @click="openExternally"
             class="flex flex-1 items-center justify-center gap-1 rounded-md bg-primary px-2 py-1.5 text-xs text-primary-foreground hover:opacity-90"
+            @click="openExternally"
           >
             <ExternalLink class="size-3" />
             打开
           </button>
           <button
-            @click="revealInFinder"
             class="flex items-center justify-center rounded-md bg-muted px-2 py-1.5 text-xs hover:bg-muted/80"
+            title="在 Finder 中显示"
+            @click="revealInFinder"
           >
             <FolderOpen class="size-3" />
           </button>
           <button
-            @click="copyPath"
             class="flex items-center justify-center rounded-md bg-muted px-2 py-1.5 text-xs hover:bg-muted/80"
+            title="复制路径"
+            @click="copyPath"
           >
             <Copy class="size-3" />
           </button>
@@ -121,13 +207,19 @@ watch(
         </div>
         <div class="flex justify-between gap-2">
           <span class="text-muted-foreground">类型</span>
-          <span>{{ file.kind || "—" }}</span>
+          <span>{{ kindLabel(file.kind) }}</span>
         </div>
       </div>
 
       <div class="flex-1 overflow-auto">
         <div v-if="isImage && imageUrl" class="flex h-full items-center justify-center bg-muted/30 p-4">
           <img :src="imageUrl" :alt="file.name" class="max-h-full max-w-full object-contain" />
+        </div>
+        <div v-else-if="isPdf && pdfUrl" class="h-full">
+          <iframe :src="pdfUrl" class="h-full w-full border-0" :title="file.name" />
+        </div>
+        <div v-else-if="isHtml && htmlUrl" class="h-full">
+          <iframe :src="htmlUrl" class="h-full w-full border-0" :title="file.name" />
         </div>
         <div v-else-if="isText" class="p-3">
           <div v-if="previewLoading" class="flex items-center gap-2 text-xs text-muted-foreground">
@@ -137,13 +229,17 @@ watch(
           <div v-else-if="previewError" class="text-xs text-red-500">
             {{ previewError }}
           </div>
-          <pre
+          <div
             v-else-if="preview"
-            class="whitespace-pre-wrap break-all font-mono text-[11px] leading-snug text-foreground"
-          >{{ preview }}</pre>
+            class="markdown-body"
+            v-html="highlightedHtml"
+          />
           <div v-else class="text-xs text-muted-foreground">无预览</div>
         </div>
-        <div v-else class="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+        <div
+          v-else
+          class="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground"
+        >
           该类型暂不支持预览，点击"打开"用默认应用查看
         </div>
       </div>

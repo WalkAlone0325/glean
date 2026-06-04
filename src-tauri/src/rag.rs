@@ -5,9 +5,24 @@ use crate::search::SearchFilter;
 use anyhow::Result;
 use rusqlite::params;
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
+
+static STOP_FLAG: AtomicBool = AtomicBool::new(false);
+
+pub fn request_stop() {
+    STOP_FLAG.store(true, Ordering::SeqCst);
+}
+
+pub fn is_stopped() -> bool {
+    STOP_FLAG.load(Ordering::SeqCst)
+}
+
+pub fn reset_stop() {
+    STOP_FLAG.store(false, Ordering::SeqCst);
+}
 
 const MAX_CONTEXT_CHUNKS: i64 = 6;
 const MAX_CHARS_PER_CHUNK: usize = 1200;
@@ -243,6 +258,8 @@ pub async fn run_chat(
     let provider = build_provider(&cfg);
     let assistant_id = append_message(&db, conv_id, "assistant", "").await?;
 
+    reset_stop();
+
     let chunk_event = ChatChunkEvent {
         conversation_id: conv_id,
         message_id: assistant_id,
@@ -266,6 +283,9 @@ pub async fn run_chat(
 
     let result = provider
         .chat_stream(req, Box::new(move |delta: String| {
+            if is_stopped() {
+                return;
+            }
             let evt = ChatChunkEvent {
                 conversation_id: chunk_event.conversation_id,
                 message_id: chunk_event.message_id,
@@ -275,7 +295,9 @@ pub async fn run_chat(
         }))
         .await;
 
-    let mut final_content;
+    let stopped = is_stopped();
+
+    let final_content;
     let mut input_tokens = None;
     let mut output_tokens = None;
     let mut err: Option<String> = None;
@@ -306,7 +328,13 @@ pub async fn run_chat(
     let done = ChatDoneEvent {
         input_tokens,
         output_tokens,
-        error: err,
+        error: err.clone().or_else(|| {
+            if stopped {
+                Some("stopped".to_string())
+            } else {
+                None
+            }
+        }),
         ..done_event
     };
     let _ = app.emit("chat-done", done);

@@ -67,9 +67,9 @@ function onPreset(name: string) {
         <div class="flex items-center justify-between border-b border-border px-5 py-3">
           <h2 class="text-sm font-semibold">设置</h2>
           <button
-            @click="emit('close')"
             class="rounded-md p-1 text-muted-foreground hover:bg-muted"
             aria-label="关闭"
+            @click="emit('close')"
           >
             <X class="size-4" />
           </button>
@@ -85,13 +85,13 @@ function onPreset(name: string) {
               <button
                 v-for="name in providerPresets"
                 :key="name"
-                @click="onPreset(name)"
                 :class="[
                   'rounded-md px-2.5 py-1 text-xs transition',
                   settings.config.provider === name
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted hover:bg-muted/80',
                 ]"
+                @click="onPreset(name)"
               >
                 {{ name }}
               </button>
@@ -107,16 +107,16 @@ function onPreset(name: string) {
             <label class="mb-1 block text-xs text-muted-foreground">API Key</label>
             <div class="mb-3 flex items-center gap-1">
               <input
-                :type="showKey ? 'text' : 'password'"
                 v-model="settings.config.api_key"
+                :type="showKey ? 'text' : 'password'"
                 class="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
                 placeholder="sk-..."
                 autocomplete="off"
               />
               <button
-                @click="showKey = !showKey"
                 class="rounded-md bg-muted p-1.5 text-muted-foreground hover:bg-muted/80"
                 :title="showKey ? '隐藏' : '显示'"
+                @click="showKey = !showKey"
               >
                 <Eye v-if="!showKey" class="size-4" />
                 <EyeOff v-else class="size-4" />
@@ -132,9 +132,9 @@ function onPreset(name: string) {
 
             <div class="mt-3 flex items-center gap-2">
               <button
-                @click="onTest"
                 :disabled="testing"
                 class="flex items-center gap-1 rounded-md bg-muted px-3 py-1.5 text-xs hover:bg-muted/80 disabled:opacity-50"
+                @click="onTest"
               >
                 <Loader2 v-if="testing" class="size-3 animate-spin" />
                 测试连通性
@@ -163,15 +163,15 @@ function onPreset(name: string) {
 
         <div class="flex justify-end gap-2 border-t border-border px-5 py-3">
           <button
-            @click="emit('close')"
             class="rounded-md bg-muted px-3 py-1.5 text-xs hover:bg-muted/80"
+            @click="emit('close')"
           >
             取消
           </button>
           <button
-            @click="onSave"
             :disabled="saving"
             class="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            @click="onSave"
           >
             <Loader2 v-if="saving" class="size-3 animate-spin" />
             保存

@@ -59,6 +59,7 @@ pub fn run() {
             commands::get_provider_config,
             commands::test_llm,
             commands::chat_send,
+            commands::chat_stop,
             commands::list_messages,
             commands::list_conversations,
             commands::delete_conversation,

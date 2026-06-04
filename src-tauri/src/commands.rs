@@ -392,6 +392,11 @@ pub fn get_provider_config(
 }
 
 #[tauri::command]
+pub fn chat_stop() {
+    crate::rag::request_stop();
+}
+
+#[tauri::command]
 pub async fn chat_send(
     app: AppHandle,
     db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,

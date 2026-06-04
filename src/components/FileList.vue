@@ -3,12 +3,16 @@ import { computed, ref, useTemplateRef, watch } from "vue";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { invoke } from "@tauri-apps/api/core";
 import { useFilesStore, type FileEntry } from "../stores/files";
-import { Loader2 } from "@lucide/vue";
+import { useToastStore } from "../stores/toast";
+import { Loader2, ExternalLink, FolderOpen, Copy, Search } from "@lucide/vue";
 import { kindIcon, formatSize, formatDate } from "../utils/fileKind";
+import ContextMenu from "./ContextMenu.vue";
 
 const store = useFilesStore();
+const toast = useToastStore();
 const containerRef = useTemplateRef<HTMLDivElement>("containerRef");
 const hoverId = ref<number | null>(null);
+const ctxMenu = ref<{ x: number; y: number; fileId: number } | null>(null);
 
 const rowHeight = 44;
 
@@ -27,8 +31,53 @@ function isActive(item: FileEntry) {
   return item.id === store.selectedId || item.id === hoverId.value;
 }
 
+function isSelected(item: FileEntry) {
+  return item.id === store.selectedId;
+}
+
 function onDoubleClick(item: FileEntry) {
   invoke("open_file", { path: item.path });
+}
+
+async function openFile(path: string) {
+  await invoke("open_file", { path });
+}
+
+async function revealInFinder(path: string) {
+  await invoke("reveal_in_finder", { path });
+}
+
+async function copyPath(path: string) {
+  try {
+    await navigator.clipboard.writeText(path);
+    toast.push("已复制路径", "success");
+  } catch {
+    toast.push("复制失败", "error");
+  }
+}
+
+function onContextMenu(e: MouseEvent, item: FileEntry) {
+  e.preventDefault();
+  store.select(item.id);
+  ctxMenu.value = { x: e.clientX, y: e.clientY, fileId: item.id };
+}
+
+function closeCtxMenu() {
+  ctxMenu.value = null;
+}
+
+function ctxFile(): FileEntry | null {
+  if (!ctxMenu.value) return null;
+  return store.items.find((f) => f.id === ctxMenu.value!.fileId) || null;
+}
+
+async function ctxAction(action: "open" | "finder" | "copy") {
+  const f = ctxFile();
+  if (!f) return;
+  closeCtxMenu();
+  if (action === "open") await openFile(f.path);
+  else if (action === "finder") await revealInFinder(f.path);
+  else if (action === "copy") await copyPath(f.path);
 }
 
 watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "post" });
@@ -40,8 +89,8 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       class="grid grid-cols-[1fr_80px_70px_120px] gap-3 border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground"
     >
       <button
-        @click="store.toggleSort('name')"
         class="flex items-center gap-1 text-left hover:text-foreground"
+        @click="store.toggleSort('name')"
       >
         名称
         <span v-if="store.sortKey === 'name'" class="text-foreground">
@@ -49,8 +98,8 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         </span>
       </button>
       <button
-        @click="store.toggleSort('ext')"
         class="flex items-center gap-1 hover:text-foreground"
+        @click="store.toggleSort('ext')"
       >
         类型
         <span v-if="store.sortKey === 'ext'" class="text-foreground">
@@ -58,8 +107,8 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         </span>
       </button>
       <button
-        @click="store.toggleSort('size')"
         class="flex items-center gap-1 hover:text-foreground"
+        @click="store.toggleSort('size')"
       >
         大小
         <span v-if="store.sortKey === 'size'" class="text-foreground">
@@ -67,8 +116,8 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         </span>
       </button>
       <button
-        @click="store.toggleSort('mtime')"
         class="flex items-center gap-1 hover:text-foreground"
+        @click="store.toggleSort('mtime')"
       >
         修改时间
         <span v-if="store.sortKey === 'mtime'" class="text-foreground">
@@ -78,18 +127,25 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
     </div>
 
     <div ref="containerRef" class="flex-1 overflow-auto">
-      <div v-if="store.loading" class="flex items-center justify-center py-10 text-muted-foreground">
-        <Loader2 class="mr-2 size-4 animate-spin" />
-        加载中...
+      <div
+        v-if="store.loading && !store.items.length"
+        class="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground"
+      >
+        <Loader2 class="size-5 animate-spin" />
+        <span class="text-xs">加载中...</span>
       </div>
       <div v-else-if="store.error" class="px-3 py-6 text-sm text-red-500">
         {{ store.error }}
       </div>
       <div
         v-else-if="!store.filtered.length"
-        class="flex h-full items-center justify-center text-sm text-muted-foreground"
+        class="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground"
       >
-        {{ store.items.length ? "无匹配文件" : "暂无文件" }}
+        <Search v-if="store.nameFilter" class="size-6 opacity-50" />
+        <span class="text-sm">
+          {{ store.nameFilter ? `没有匹配 "${store.nameFilter}" 的文件` : "暂无文件" }}
+        </span>
+        <span v-if="store.nameFilter" class="text-xs">试试清空过滤词或更换关键词</span>
       </div>
       <div
         v-else
@@ -108,21 +164,38 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
           }"
         >
           <div
+            :class="[
+              'grid h-full grid-cols-[1fr_80px_70px_120px] items-center gap-3 px-3 text-sm cursor-default',
+              isSelected(store.filtered[vi.index]!)
+                ? 'bg-primary/10 border-l-2 border-primary'
+                : isActive(store.filtered[vi.index]!)
+                  ? 'bg-muted'
+                  : '',
+              isSelected(store.filtered[vi.index]!)
+                ? 'pl-[10px]'
+                : 'pl-3',
+            ]"
             @click="store.select(store.filtered[vi.index]!.id)"
             @dblclick="onDoubleClick(store.filtered[vi.index]!)"
             @mouseenter="hoverId = store.filtered[vi.index]!.id"
             @mouseleave="hoverId = null"
-            :class="[
-              'grid h-full grid-cols-[1fr_80px_70px_120px] items-center gap-3 px-3 text-sm',
-              isActive(store.filtered[vi.index]!) ? 'bg-muted' : '',
-            ]"
+            @contextmenu="onContextMenu($event, store.filtered[vi.index]!)"
           >
             <div class="flex min-w-0 items-center gap-2">
               <component
                 :is="kindIcon(store.filtered[vi.index]!.kind)"
-                class="size-4 shrink-0 text-muted-foreground"
+                :class="[
+                  'size-4 shrink-0',
+                  isSelected(store.filtered[vi.index]!) ? 'text-primary' : 'text-muted-foreground',
+                ]"
               />
-              <span class="truncate">{{ store.filtered[vi.index]!.name }}</span>
+              <span
+                :class="[
+                  'truncate',
+                  isSelected(store.filtered[vi.index]!) ? 'font-medium' : '',
+                ]"
+                >{{ store.filtered[vi.index]!.name }}</span
+              >
             </div>
             <span class="text-xs text-muted-foreground">
               .{{ store.filtered[vi.index]!.ext || "—" }}
@@ -137,5 +210,46 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         </div>
       </div>
     </div>
+
+    <div
+      v-if="store.items.length"
+      class="border-t border-border px-3 py-1 text-[10px] text-muted-foreground"
+    >
+      <template v-if="store.nameFilter">
+        过滤 {{ store.filtered.length }}/{{ store.items.length }}
+      </template>
+      <template v-else>
+        共 {{ store.items.length }} 个文件 · 双击打开 · 右键更多操作
+      </template>
+    </div>
+
+    <ContextMenu
+      v-if="ctxMenu"
+      :x="ctxMenu.x"
+      :y="ctxMenu.y"
+      @close="closeCtxMenu"
+    >
+      <button
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-muted"
+        @click="ctxAction('open')"
+      >
+        <ExternalLink class="size-3.5" />
+        打开
+      </button>
+      <button
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-muted"
+        @click="ctxAction('finder')"
+      >
+        <FolderOpen class="size-3.5" />
+        在 Finder 中显示
+      </button>
+      <button
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-muted"
+        @click="ctxAction('copy')"
+      >
+        <Copy class="size-3.5" />
+        复制路径
+      </button>
+    </ContextMenu>
   </div>
 </template>

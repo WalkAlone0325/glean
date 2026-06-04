@@ -14,6 +14,7 @@ import {
   Trash2,
   Pencil,
   Check,
+  Square,
 } from "@lucide/vue";
 import { renderMarkdown } from "../utils/markdown";
 import "highlight.js/styles/github-dark.css";
@@ -25,11 +26,32 @@ const inputRef = useTemplateRef<HTMLTextAreaElement>("inputRef");
 const showHistory = ref(false);
 const editingId = ref<number | null>(null);
 const editingTitle = ref("");
+const showScrollToBottom = ref(false);
+
+function autoResize() {
+  const el = inputRef.value;
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = Math.min(el.scrollHeight, 160) + "px";
+}
+
+watch(input, async () => {
+  await nextTick();
+  autoResize();
+});
 
 onMounted(() => {
   chat.ensureListeners();
   chat.loadConversations();
+  nextTick(() => inputRef.value?.focus());
 });
+
+watch(
+  () => chat.panelOpen,
+  (v) => {
+    if (v) nextTick(() => inputRef.value?.focus());
+  },
+);
 
 watch(
   () => chat.messages.length,
@@ -43,15 +65,33 @@ watch(
   () => chat.messages[chat.messages.length - 1]?.content,
   async () => {
     await nextTick();
-    if (scrollRef.value) scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+    if (scrollRef.value && !showScrollToBottom.value) {
+      scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+    }
   },
 );
+
+function onScroll() {
+  const el = scrollRef.value;
+  if (!el) return;
+  const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+  showScrollToBottom.value = distanceToBottom > 120;
+}
+
+function scrollToBottom() {
+  if (scrollRef.value) scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+}
 
 function onSend() {
   const text = input.value;
   if (!text.trim()) return;
   input.value = "";
+  nextTick(() => autoResize());
   chat.send(text);
+}
+
+function onStop() {
+  chat.stopGenerate();
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -125,32 +165,32 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         <Sparkles class="size-4 text-primary" />
         <h2 class="text-sm font-semibold">AI 助手</h2>
         <label class="ml-2 flex cursor-pointer items-center gap-1 text-[11px] text-muted-foreground">
-          <input type="checkbox" v-model="chat.useRag" class="size-3" />
+          <input v-model="chat.useRag" type="checkbox" class="size-3" />
           RAG
         </label>
       </div>
       <div class="flex items-center gap-1">
         <button
-          @click="showHistory = !showHistory"
           :class="[
             'rounded-md p-1 hover:bg-muted',
             showHistory ? 'text-primary bg-muted' : 'text-muted-foreground',
           ]"
           title="历史对话"
+          @click="showHistory = !showHistory"
         >
           <History class="size-4" />
         </button>
         <button
-          @click="chat.newConversation()"
           class="rounded-md p-1 text-muted-foreground hover:bg-muted"
           title="新对话"
+          @click="chat.newConversation()"
         >
           <MessageSquarePlus class="size-4" />
         </button>
         <button
-          @click="chat.togglePanel()"
           class="rounded-md p-1 text-muted-foreground hover:bg-muted"
           title="关闭"
+          @click="chat.togglePanel()"
         >
           <X class="size-4" />
         </button>
@@ -178,12 +218,12 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
             <div v-if="editingId === conv.id" class="flex gap-1" @click.stop>
               <input
                 v-model="editingTitle"
-                @keydown.enter="saveEdit"
-                @keydown.escape="editingId = null"
                 class="w-full rounded bg-background px-1 py-0.5 text-xs outline-none ring-1 ring-primary"
                 autofocus
+                @keydown.enter="saveEdit"
+                @keydown.escape="editingId = null"
               />
-              <button @click.stop="saveEdit" class="text-primary">
+              <button class="text-primary" @click.stop="saveEdit">
                 <Check class="size-3" />
               </button>
             </div>
@@ -194,16 +234,16 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           </div>
           <div v-if="editingId !== conv.id" class="hidden gap-0.5 group-hover:flex">
             <button
-              @click.stop="startEdit(conv.id, conv.title)"
               class="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
               title="重命名"
+              @click.stop="startEdit(conv.id, conv.title)"
             >
               <Pencil class="size-3" />
             </button>
             <button
-              @click.stop="onDelete(conv.id)"
               class="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-red-500"
               title="删除"
+              @click.stop="onDelete(conv.id)"
             >
               <Trash2 class="size-3" />
             </button>
@@ -217,7 +257,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         </div>
       </div>
 
-      <div ref="scrollRef" class="flex-1 overflow-auto p-4">
+      <div ref="scrollRef" class="relative flex-1 overflow-auto p-4" @scroll="onScroll">
         <div
           v-if="!chat.hasMessages"
           class="flex h-full items-center justify-center text-xs text-muted-foreground"
@@ -258,16 +298,16 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
                     <span class="flex-1 truncate" :title="ref.path">{{ ref.name }}</span>
                     <span class="text-[10px] opacity-50">[{{ ridx + 1 }}]</span>
                     <button
-                      @click="openFile(ref.path)"
                       class="rounded p-0.5 hover:bg-muted/80"
                       title="打开"
+                      @click="openFile(ref.path)"
                     >
                       <ExternalLink class="size-3" />
                     </button>
                     <button
-                      @click="revealInFinder(ref.path)"
                       class="rounded p-0.5 hover:bg-muted/80"
                       title="在 Finder 中显示"
+                      @click="revealInFinder(ref.path)"
                     >
                       <FolderOpen class="size-3" />
                     </button>
@@ -278,6 +318,13 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           </div>
           <div v-if="chat.error" class="text-xs text-red-500">{{ chat.error }}</div>
         </div>
+        <button
+          v-if="showScrollToBottom"
+          class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-background px-3 py-1 text-[11px] shadow-md border border-border hover:bg-muted"
+          @click="scrollToBottom"
+        >
+          ↓ 回到底部
+        </button>
       </div>
     </div>
 
@@ -286,18 +333,27 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         <textarea
           ref="inputRef"
           v-model="input"
-          @keydown="onKeydown"
           placeholder="问任何问题... (Enter 发送, Shift+Enter 换行)"
-          rows="2"
+          rows="1"
           class="flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          style="min-height: 38px; max-height: 160px"
+          @keydown="onKeydown"
         />
         <button
-          @click="onSend"
+          v-if="chat.loading"
+          class="flex items-center justify-center rounded-md bg-red-500/80 px-3 text-white hover:bg-red-500"
+          title="停止生成"
+          @click="onStop"
+        >
+          <Square class="size-3.5 fill-current" />
+        </button>
+        <button
+          v-else
           :disabled="!canSend"
           class="flex items-center justify-center rounded-md bg-primary px-3 text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          @click="onSend"
         >
-          <Loader2 v-if="chat.loading" class="size-4 animate-spin" />
-          <Send v-else class="size-4" />
+          <Send class="size-4" />
         </button>
       </div>
       <div class="mt-1.5 text-[10px] text-muted-foreground">

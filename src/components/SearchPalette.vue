@@ -113,10 +113,10 @@ const modeLabel = computed(() => {
           <input
             ref="inputRef"
             :value="store.query"
-            @input="store.setQuery(($event.target as HTMLInputElement).value)"
-            @keydown="onKeydown"
             placeholder="搜索文件名、内容..."
             class="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+            @input="store.setQuery(($event.target as HTMLInputElement).value)"
+            @keydown="onKeydown"
           />
           <Loader2 v-if="store.loading" class="size-4 animate-spin text-muted-foreground" />
           <kbd class="text-xs text-muted-foreground">ESC</kbd>
@@ -137,15 +137,15 @@ const modeLabel = computed(() => {
               v-for="(item, idx) in store.results"
               :key="item.id"
               ref="itemRefs"
-              @click="store.openAt(idx).then(() => (store.paletteOpen = false))"
-              @mouseenter="store.setHover(idx)"
-              @mouseleave="store.setHover(null)"
               :class="[
                 'flex cursor-pointer items-start gap-3 px-4 py-3',
                 idx === store.hoverIndex || (store.hoverIndex === null && idx === store.selectedIndex)
                   ? 'bg-muted'
                   : '',
               ]"
+              @click="store.openAt(idx).then(() => (store.paletteOpen = false))"
+              @mouseenter="store.setHover(idx)"
+              @mouseleave="store.setHover(null)"
             >
               <component :is="kindIcon(item.kind)" class="mt-0.5 size-5 shrink-0 text-muted-foreground" />
               <div class="min-w-0 flex-1">
@@ -179,9 +179,9 @@ const modeLabel = computed(() => {
         <div class="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">
           <div class="flex items-center gap-3">
             <button
-              @click="store.toggleMode()"
               class="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-muted"
               :title="`当前: ${modeLabel}（Tab 切换）`"
+              @click="store.toggleMode()"
             >
               <span class="font-medium text-foreground">{{ modeLabel }}</span>
               <span v-if="store.mode === 'auto'" class="text-[10px]">→ {{ store.effectiveMode === "semantic" ? "语义" : "关键词" }}</span>

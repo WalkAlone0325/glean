@@ -112,8 +112,19 @@ export const useChatStore = defineStore("chat", () => {
         error.value = String(e);
         loading.value = false;
         assistantMsg.streaming = false;
-        assistantMsg.content = `[错误] ${e}`;
+        if (!assistantMsg.content) {
+          assistantMsg.content = `[错误] ${String(e)}`;
+        }
       });
+  }
+
+  async function stopGenerate() {
+    if (!loading.value) return;
+    try {
+      await invoke("chat_stop");
+    } catch (e) {
+      console.warn("stop failed:", e);
+    }
   }
 
   async function loadConversation(id: number) {
@@ -183,6 +194,7 @@ export const useChatStore = defineStore("chat", () => {
     panelOpen,
     hasMessages,
     send,
+    stopGenerate,
     loadConversation,
     loadConversations,
     deleteConversation,
