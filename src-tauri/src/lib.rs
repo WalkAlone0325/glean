@@ -68,6 +68,11 @@ pub fn run() {
             commands::list_conversations,
             commands::delete_conversation,
             commands::rename_conversation,
+            commands::list_tags,
+            commands::create_tag,
+            commands::delete_tag,
+            commands::get_file_tags,
+            commands::set_file_tags,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

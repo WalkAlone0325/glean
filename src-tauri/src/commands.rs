@@ -614,6 +614,138 @@ pub async fn test_llm(
     Ok(resp.content)
 }
 
+// ── Tags ──
+
+#[derive(serde::Serialize)]
+pub struct TagSummary {
+    pub id: i64,
+    pub name: String,
+    pub color: Option<String>,
+    pub file_count: i64,
+}
+
+#[tauri::command]
+pub async fn list_tags(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+) -> Result<Vec<TagSummary>, String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT t.id, t.name, t.color, (SELECT COUNT(*) FROM file_tags ft WHERE ft.tag_id = t.id)
+             FROM tags t ORDER BY t.name",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(TagSummary {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                color: r.get(2)?,
+                file_count: r.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+pub async fn create_tag(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    name: String,
+    color: Option<String>,
+) -> Result<TagSummary, String> {
+    let trimmed = name.trim().to_string();
+    if trimmed.is_empty() {
+        return Err("标签名不能为空".to_string());
+    }
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT OR IGNORE INTO tags (name, color) VALUES (?1, ?2)",
+        rusqlite::params![&trimmed, &color],
+    )
+    .map_err(|e| e.to_string())?;
+    let id: i64 = conn
+        .query_row("SELECT id FROM tags WHERE name = ?1", rusqlite::params![&trimmed], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    Ok(TagSummary {
+        id,
+        name: trimmed,
+        color,
+        file_count: 0,
+    })
+}
+
+#[tauri::command]
+pub async fn delete_tag(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    tag_id: i64,
+) -> Result<(), String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM tags WHERE id = ?1", rusqlite::params![tag_id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_file_tags(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    file_id: i64,
+) -> Result<Vec<TagSummary>, String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT t.id, t.name, t.color, (SELECT COUNT(*) FROM file_tags ft WHERE ft.tag_id = t.id)
+             FROM tags t
+             JOIN file_tags ft ON ft.tag_id = t.id
+             WHERE ft.file_id = ?1
+             ORDER BY t.name",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(rusqlite::params![file_id], |r| {
+            Ok(TagSummary {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                color: r.get(2)?,
+                file_count: r.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+pub async fn set_file_tags(
+    db: State<'_, std::sync::Arc<tokio::sync::Mutex<Database>>>,
+    file_id: i64,
+    tag_ids: Vec<i64>,
+) -> Result<(), String> {
+    let db_lock = db.lock().await;
+    let conn = db_lock.conn.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM file_tags WHERE file_id = ?1", rusqlite::params![file_id])
+        .map_err(|e| e.to_string())?;
+    for tid in &tag_ids {
+        conn.execute(
+            "INSERT OR IGNORE INTO file_tags (file_id, tag_id) VALUES (?1, ?2)",
+            rusqlite::params![file_id, tid],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[derive(serde::Serialize)]
 pub struct Stats {
     pub files: u64,

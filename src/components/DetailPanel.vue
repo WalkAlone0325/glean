@@ -1,18 +1,27 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { ExternalLink, Copy, Loader2, FolderOpen } from "@lucide/vue";
+import { ExternalLink, Copy, Loader2, FolderOpen, Plus } from "@lucide/vue";
 import { useFilesStore } from "../stores/files";
 import { useToastStore } from "../stores/toast";
+import { useTagsStore, type TagSummary } from "../stores/tags";
 import { kindIcon, kindLabel, formatSize, formatDateTime } from "../utils/fileKind";
 import { renderMarkdown } from "../utils/markdown";
 import hljs from "highlight.js/lib/common";
+import TagBadge from "./TagBadge.vue";
 
 const store = useFilesStore();
 const toast = useToastStore();
+const tags = useTagsStore();
 const preview = ref<string | null>(null);
 const previewLoading = ref(false);
 const previewError = ref<string | null>(null);
+const fileTags = ref<TagSummary[]>([]);
+const showTagPicker = ref(false);
+const newTagName = ref("");
+const newTagColor = ref("");
+
+tags.loadTags();
 
 const file = computed(() => store.items.find((f) => f.id === store.selectedId) || null);
 const Icon = computed(() => kindIcon(file.value?.kind));
@@ -148,9 +157,63 @@ async function copyPath() {
   }
 }
 
+async function loadFileTags() {
+  if (!file.value) {
+    fileTags.value = [];
+    return;
+  }
+  try {
+    fileTags.value = await invoke<TagSummary[]>("get_file_tags", { fileId: file.value.id });
+  } catch (e) {
+    console.warn("load file tags failed:", e);
+  }
+}
+
+async function addExistingTag(tagId: number) {
+  if (!file.value || !file.value.id) return;
+  const all = [...fileTags.value.map((t) => t.id), tagId];
+  try {
+    await invoke("set_file_tags", { fileId: file.value.id, tagIds: all });
+    await loadFileTags();
+  } catch (e) {
+    toast.error("添加标签失败");
+  }
+}
+
+async function removeTag(tagId: number) {
+  if (!file.value || !file.value.id) return;
+  const all = fileTags.value.filter((t) => t.id !== tagId).map((t) => t.id);
+  try {
+    await invoke("set_file_tags", { fileId: file.value.id, tagIds: all });
+    await loadFileTags();
+  } catch (e) {
+    toast.error("移除标签失败");
+  }
+}
+
+async function addNewTag() {
+  if (!file.value || !file.value.id || !newTagName.value.trim()) return;
+  const tag = await tags.createTag(newTagName.value.trim(), newTagColor.value || undefined);
+  if (tag) {
+    const all = [...fileTags.value.map((t) => t.id), tag.id];
+    try {
+      await invoke("set_file_tags", { fileId: file.value.id, tagIds: all });
+      await loadFileTags();
+    } catch (e) {
+      toast.error("添加标签失败");
+    }
+  }
+  newTagName.value = "";
+  showTagPicker.value = false;
+}
+
 watch(
   () => file.value?.id,
-  () => loadPreview(),
+  () => {
+    loadPreview();
+    loadFileTags();
+    showTagPicker.value = false;
+  },
   { immediate: true },
 );
 </script>
@@ -208,6 +271,76 @@ watch(
         <div class="flex justify-between gap-2">
           <span class="text-muted-foreground">类型</span>
           <span>{{ kindLabel(file.kind) }}</span>
+        </div>
+      </div>
+
+      <div v-if="fileTags.length || showTagPicker" class="border-b border-border p-3">
+        <div class="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+          标签
+          <button
+            v-if="!showTagPicker"
+            class="ml-auto rounded p-0.5 hover:bg-muted"
+            title="添加标签"
+            @click="showTagPicker = true"
+          >
+            <Plus class="size-3" />
+          </button>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <TagBadge
+            v-for="t in fileTags"
+            :key="t.id"
+            :name="t.name"
+            :color="t.color"
+            :removable="true"
+            :small="true"
+            @remove="removeTag(t.id)"
+          />
+        </div>
+        <div v-if="showTagPicker" class="mt-1.5 flex items-center gap-1.5">
+          <select
+            v-model="newTagColor"
+            class="rounded border border-border bg-background px-1 py-0.5 text-[10px]"
+          >
+            <option value="">灰色</option>
+            <option value="red">红色</option>
+            <option value="orange">橙色</option>
+            <option value="yellow">黄色</option>
+            <option value="green">绿色</option>
+            <option value="blue">蓝色</option>
+            <option value="purple">紫色</option>
+            <option value="pink">粉色</option>
+          </select>
+          <input
+            v-model="newTagName"
+            placeholder="新标签名"
+            class="flex-1 rounded border border-border bg-background px-2 py-0.5 text-[11px] outline-none focus:border-primary"
+            @keydown.enter="addNewTag"
+          />
+          <button
+            class="rounded bg-primary px-2 py-0.5 text-[11px] text-primary-foreground hover:opacity-90"
+            :disabled="!newTagName.trim()"
+            @click="addNewTag"
+          >
+            添加
+          </button>
+          <button
+            class="rounded px-1.5 py-0.5 text-[11px] hover:bg-muted"
+            @click="showTagPicker = false"
+          >
+            取消
+          </button>
+        </div>
+        <div class="mt-1.5 flex flex-wrap gap-1">
+          <button
+            v-for="t in tags.all"
+            v-show="!fileTags.find((ft) => ft.id === t.id)"
+            :key="'all-' + t.id"
+            class="rounded border border-border px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100"
+            @click="addExistingTag(t.id)"
+          >
+            {{ t.name }}
+          </button>
         </div>
       </div>
 
