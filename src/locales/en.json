@@ -3,6 +3,46 @@
     "name": "Glean",
     "tagline": "Local-first AI File Manager"
   },
+  "header": {
+    "search_placeholder": "Search files, content, commands...",
+    "ai_assistant": "AI Assistant",
+    "settings": "Settings"
+  },
+  "sidebar": {
+    "all_files": "All Files",
+    "recent": "Recent",
+    "indexed_folders": "Indexed Folders",
+    "no_folders": "No folders indexed yet"
+  },
+  "empty_state": {
+    "title": "No folders indexed yet",
+    "subtitle": "Add a folder to start searching and browsing files",
+    "button": "Choose a Folder to Index"
+  },
+  "toolbar": {
+    "filter_placeholder": "Filter current list...",
+    "add_folder": "Add",
+    "pause": "Pause",
+    "resume": "Resume",
+    "downloading_model": "Downloading model",
+    "embedding_pct": "Embedding {pct}%",
+    "embedding_ready": "Embedding ready",
+    "embedding_failed": "Embedding failed"
+  },
+  "kind": {
+    "all": "All",
+    "pdf": "PDF",
+    "markdown": "Markdown",
+    "text": "Text",
+    "code": "Code",
+    "image": "Image",
+    "document": "Document",
+    "spreadsheet": "Spreadsheet",
+    "archive": "Archive"
+  },
+  "header": {
+    "search_placeholder": "Search files, content, commands..."
+  },
   "filelist": {
     "all": "All Files",
     "recent": "Recent",
@@ -16,6 +56,8 @@
     "selected_recent": "recent files",
     "selected_favorites": "favorites",
     "selected_filter": "{count}/{total} filtered",
+    "status_total": "{count} files total",
+"status_total": "{count} files total",
     "status_hint": "Double-click to open · Right-click for more",
     "name": "Name",
     "type": "Type",
@@ -41,10 +83,20 @@
     "add": "Add",
     "cancel": "Cancel",
     "no_color": "Default",
+    "color_red": "Red",
+    "color_orange": "Orange",
+    "color_yellow": "Yellow",
+    "color_green": "Green",
+    "color_blue": "Blue",
+    "color_purple": "Purple",
+    "color_pink": "Pink",
+    "add_tag_failed": "Failed to add tag",
+    "remove_tag_failed": "Failed to remove tag",
     "close": "Close",
     "copied": "Path copied"
   },
   "chat": {
+    "title": "AI Assistant",
     "placeholder": "Ask anything... (Enter to send, Shift+Enter for new line)",
     "send": "Send",
     "stop": "Stop",
@@ -67,6 +119,9 @@
     "tool_waiting": "Waiting for confirmation",
     "tool_denied": "Denied",
     "tool_undone": "Undone",
+    "rename": "Rename",
+    "delete": "Delete",
+    "undo_title": "Undo this operation",
     "undo": "Undo",
     "tool_error": "Error",
     "tool_result": "Result",
@@ -152,8 +207,21 @@
   },
   "search": {
     "placeholder": "Search files...",
+    "placeholder_expanded": "Search files, content...",
     "no_results": "No matching files",
-    "searching": "Searching..."
+    "searching": "Searching...",
+    "start_hint": "Type to start searching",
+    "results_count": "{n} results",
+    "mode_auto": "Auto",
+    "mode_semantic": "Semantic",
+    "mode_keyword": "Keyword",
+    "source_both": "Semantic+Keyword",
+    "source_vector": "Semantic",
+    "source_keyword": "Keyword",
+    "hint_mode": "mode",
+    "hint_nav": "navigate",
+    "hint_open": "open",
+    "current_mode": "Current: {mode} (Tab to switch)"
   },
   "toast": {
     "copied": "Path copied",

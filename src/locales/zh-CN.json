@@ -3,6 +3,46 @@
     "name": "Glean",
     "tagline": "本地的 AI 文件管家"
   },
+  "header": {
+    "search_placeholder": "搜索文件、内容、命令...",
+    "ai_assistant": "AI 助手",
+    "settings": "设置"
+  },
+  "sidebar": {
+    "all_files": "所有文件",
+    "recent": "最近查看",
+    "indexed_folders": "已索引文件夹",
+    "no_folders": "尚未索引任何文件夹"
+  },
+  "empty_state": {
+    "title": "还没有索引任何文件夹",
+    "subtitle": "添加文件夹后即可开始搜索和浏览文件",
+    "button": "选择文件夹开始索引"
+  },
+  "toolbar": {
+    "filter_placeholder": "过滤当前列表...",
+    "add_folder": "添加",
+    "pause": "暂停",
+    "resume": "继续",
+    "downloading_model": "下载模型",
+    "embedding_pct": "向量化 {pct}%",
+    "embedding_ready": "向量就绪",
+    "embedding_failed": "向量化失败"
+  },
+  "kind": {
+    "all": "全部",
+    "pdf": "PDF",
+    "markdown": "Markdown",
+    "text": "文本",
+    "code": "代码",
+    "image": "图片",
+    "document": "文档",
+    "spreadsheet": "表格",
+    "archive": "压缩包"
+  },
+  "header": {
+    "search_placeholder": "搜索文件、内容、命令..."
+  },
   "filelist": {
     "all": "全部文件",
     "recent": "最近查看",
@@ -16,6 +56,8 @@
     "selected_recent": "个最近查看",
     "selected_favorites": "个星标文件",
     "selected_filter": "过滤 {count}/{total}",
+    "status_total": "共 {count} 个文件",
+"status_total": "共 {count} 个文件",
     "status_hint": "双击打开 · 右键更多操作",
     "name": "名称",
     "type": "类型",
@@ -41,10 +83,20 @@
     "add": "添加",
     "cancel": "取消",
     "no_color": "灰色",
+    "color_red": "红色",
+    "color_orange": "橙色",
+    "color_yellow": "黄色",
+    "color_green": "绿色",
+    "color_blue": "蓝色",
+    "color_purple": "紫色",
+    "color_pink": "粉色",
+    "add_tag_failed": "添加标签失败",
+    "remove_tag_failed": "移除标签失败",
     "close": "关闭",
     "copied": "已复制路径"
   },
   "chat": {
+    "title": "AI 助手",
     "placeholder": "问任何问题... (Enter 发送, Shift+Enter 换行)",
     "send": "发送",
     "stop": "停止生成",
@@ -67,6 +119,9 @@
     "tool_waiting": "等待确认",
     "tool_denied": "已拒绝",
     "tool_undone": "已撤销",
+    "rename": "重命名",
+    "delete": "删除",
+    "undo_title": "撤销此操作",
     "undo": "撤销",
     "tool_error": "错误",
     "tool_result": "结果",
@@ -152,8 +207,21 @@
   },
   "search": {
     "placeholder": "搜索文件...",
+    "placeholder_expanded": "搜索文件名、内容...",
     "no_results": "无匹配文件",
-    "searching": "搜索中..."
+    "searching": "搜索中...",
+    "start_hint": "输入关键词开始搜索",
+    "results_count": "{n} 个结果",
+    "mode_auto": "自动",
+    "mode_semantic": "语义",
+    "mode_keyword": "关键词",
+    "source_both": "语义+关键词",
+    "source_vector": "语义",
+    "source_keyword": "关键词",
+    "hint_mode": "模式",
+    "hint_nav": "选择",
+    "hint_open": "打开",
+    "current_mode": "当前: {mode}（Tab 切换）"
   },
   "toast": {
     "copied": "已复制路径",

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { ExternalLink, Copy, Loader2, FolderOpen, Plus } from "@lucide/vue";
 import { useFilesStore } from "../stores/files";
@@ -10,6 +11,7 @@ import { renderMarkdown } from "../utils/markdown";
 import hljs from "highlight.js/lib/common";
 import TagBadge from "./TagBadge.vue";
 
+const { t } = useI18n();
 const store = useFilesStore();
 const toast = useToastStore();
 const tags = useTagsStore();
@@ -151,9 +153,9 @@ async function copyPath() {
   if (!file.value) return;
   try {
     await navigator.clipboard.writeText(file.value.path);
-    toast.push("已复制路径", "success");
+    toast.push(t('detail.copied'), "success");
   } catch {
-    toast.push("复制失败", "error");
+    toast.push(t('toast.copy_failed'), "error");
   }
 }
 
@@ -176,7 +178,7 @@ async function addExistingTag(tagId: number) {
     await invoke("set_file_tags", { fileId: file.value.id, tagIds: all });
     await loadFileTags();
   } catch (e) {
-    toast.error("添加标签失败");
+    toast.error(t('detail.add_tag_failed'));
   }
 }
 
@@ -187,7 +189,7 @@ async function removeTag(tagId: number) {
     await invoke("set_file_tags", { fileId: file.value.id, tagIds: all });
     await loadFileTags();
   } catch (e) {
-    toast.error("移除标签失败");
+    toast.error(t('detail.remove_tag_failed'));
   }
 }
 
@@ -200,7 +202,7 @@ async function addNewTag() {
       await invoke("set_file_tags", { fileId: file.value.id, tagIds: all });
       await loadFileTags();
     } catch (e) {
-      toast.error("添加标签失败");
+      toast.error(t('detail.add_tag_failed'));
     }
   }
   newTagName.value = "";
@@ -221,7 +223,7 @@ watch(
 <template>
   <aside class="flex h-full w-72 flex-col border-l border-border">
     <div v-if="!file" class="flex flex-1 items-center justify-center text-xs text-muted-foreground">
-      选择文件查看详情
+      {{ t('filelist.no_preview') }}
     </div>
     <template v-else>
       <div class="border-b border-border p-4">
@@ -240,18 +242,18 @@ watch(
             @click="openExternally"
           >
             <ExternalLink class="size-3" />
-            打开
+            {{ t('filelist.open') }}
           </button>
           <button
             class="flex items-center justify-center rounded-md bg-muted px-2 py-1.5 text-xs hover:bg-muted/80"
-            title="在 Finder 中显示"
+            :title="t('filelist.reveal')"
             @click="revealInFinder"
           >
             <FolderOpen class="size-3" />
           </button>
           <button
             class="flex items-center justify-center rounded-md bg-muted px-2 py-1.5 text-xs hover:bg-muted/80"
-            title="复制路径"
+            :title="t('filelist.copy_path')"
             @click="copyPath"
           >
             <Copy class="size-3" />
@@ -261,26 +263,26 @@ watch(
 
       <div class="space-y-1.5 border-b border-border p-4 text-xs">
         <div class="flex justify-between gap-2">
-          <span class="text-muted-foreground">大小</span>
+          <span class="text-muted-foreground">{{ t('detail.size') }}</span>
           <span>{{ formatSize(file.size) }}</span>
         </div>
         <div class="flex justify-between gap-2">
-          <span class="text-muted-foreground">修改</span>
+          <span class="text-muted-foreground">{{ t('detail.mtime') }}</span>
           <span class="truncate">{{ formatDateTime(file.mtime) }}</span>
         </div>
         <div class="flex justify-between gap-2">
-          <span class="text-muted-foreground">类型</span>
+          <span class="text-muted-foreground">{{ t('detail.kind') }}</span>
           <span>{{ kindLabel(file.kind) }}</span>
         </div>
       </div>
 
       <div v-if="fileTags.length || showTagPicker" class="border-b border-border p-3">
         <div class="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-          标签
+          {{ t('detail.tags') }}
           <button
             v-if="!showTagPicker"
             class="ml-auto rounded p-0.5 hover:bg-muted"
-            title="添加标签"
+            :title="t('detail.add_tag')"
             @click="showTagPicker = true"
           >
             <Plus class="size-3" />
@@ -302,18 +304,18 @@ watch(
             v-model="newTagColor"
             class="rounded border border-border bg-background px-1 py-0.5 text-[10px]"
           >
-            <option value="">灰色</option>
-            <option value="red">红色</option>
-            <option value="orange">橙色</option>
-            <option value="yellow">黄色</option>
-            <option value="green">绿色</option>
-            <option value="blue">蓝色</option>
-            <option value="purple">紫色</option>
-            <option value="pink">粉色</option>
+            <option value="">{{ t('detail.no_color') }}</option>
+            <option value="red">{{ t('detail.color_red') }}</option>
+            <option value="orange">{{ t('detail.color_orange') }}</option>
+            <option value="yellow">{{ t('detail.color_yellow') }}</option>
+            <option value="green">{{ t('detail.color_green') }}</option>
+            <option value="blue">{{ t('detail.color_blue') }}</option>
+            <option value="purple">{{ t('detail.color_purple') }}</option>
+            <option value="pink">{{ t('detail.color_pink') }}</option>
           </select>
           <input
             v-model="newTagName"
-            placeholder="新标签名"
+            :placeholder="t('detail.new_tag_placeholder')"
             class="flex-1 rounded border border-border bg-background px-2 py-0.5 text-[11px] outline-none focus:border-primary"
             @keydown.enter="addNewTag"
           />
@@ -322,13 +324,13 @@ watch(
             :disabled="!newTagName.trim()"
             @click="addNewTag"
           >
-            添加
+            {{ t('detail.add') }}
           </button>
           <button
             class="rounded px-1.5 py-0.5 text-[11px] hover:bg-muted"
             @click="showTagPicker = false"
           >
-            取消
+            {{ t('detail.cancel') }}
           </button>
         </div>
         <div class="mt-1.5 flex flex-wrap gap-1">
@@ -357,7 +359,7 @@ watch(
         <div v-else-if="isText" class="p-3">
           <div v-if="previewLoading" class="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 class="size-3 animate-spin" />
-            加载预览...
+            {{ t('filelist.preview_loading') }}
           </div>
           <div v-else-if="previewError" class="text-xs text-red-500">
             {{ previewError }}
@@ -367,13 +369,13 @@ watch(
             class="markdown-body"
             v-html="highlightedHtml"
           />
-          <div v-else class="text-xs text-muted-foreground">无预览</div>
+          <div v-else class="text-xs text-muted-foreground">{{ t('filelist.preview_error') }}</div>
         </div>
         <div
           v-else
           class="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground"
         >
-          该类型暂不支持预览，点击"打开"用默认应用查看
+          {{ t('filelist.no_preview_type') }}
         </div>
       </div>
     </template>

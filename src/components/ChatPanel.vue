@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useChatStore, type ChatMessage } from "../stores/chat";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -23,6 +24,7 @@ import { renderMarkdown } from "../utils/markdown";
 import { useToastStore } from "../stores/toast";
 import "highlight.js/styles/github-dark.css";
 
+const { t } = useI18n();
 const chat = useChatStore();
 const toast = useToastStore();
 const input = ref("");
@@ -183,7 +185,7 @@ async function saveEdit() {
 }
 
 async function onDelete(id: number) {
-  if (confirm("确定删除这个对话吗？")) {
+  if (confirm(t('confirm.delete_conv'))) {
     await chat.deleteConversation(id);
   }
 }
@@ -199,7 +201,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
     <div class="flex items-center justify-between border-b border-border px-4 py-2.5">
       <div class="flex items-center gap-2">
         <Sparkles class="size-4 text-primary" />
-        <h2 class="text-sm font-semibold">AI 助手</h2>
+        <h2 class="text-sm font-semibold">{{ t('chat.title') }}</h2>
         <label class="ml-2 flex cursor-pointer items-center gap-1 text-[11px] text-muted-foreground">
           <input v-model="chat.useRag" type="checkbox" class="size-3" />
           RAG
@@ -211,21 +213,21 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
             'rounded-md p-1 hover:bg-muted',
             showHistory ? 'text-primary bg-muted' : 'text-muted-foreground',
           ]"
-          title="历史对话"
+          :title="t('chat.history', { count: chat.conversations.length })"
           @click="showHistory = !showHistory"
         >
           <History class="size-4" />
         </button>
         <button
           class="rounded-md p-1 text-muted-foreground hover:bg-muted"
-          title="新对话"
+          :title="t('chat.new_conv')"
           @click="chat.newConversation()"
         >
           <MessageSquarePlus class="size-4" />
         </button>
         <button
           class="rounded-md p-1 text-muted-foreground hover:bg-muted"
-          title="关闭"
+          :title="t('settings.close')"
           @click="chat.togglePanel()"
         >
           <X class="size-4" />
@@ -239,7 +241,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
         class="w-44 shrink-0 overflow-auto border-r border-border bg-muted/30 py-2"
       >
         <div class="px-3 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-          历史对话 ({{ chat.conversations.length }})
+          {{ t('chat.history', { count: chat.conversations.length }) }}
         </div>
         <div
           v-for="conv in chat.conversations"
@@ -264,21 +266,21 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
               </button>
             </div>
             <template v-else>
-              <div class="truncate text-xs font-medium">{{ conv.title || "新对话" }}</div>
+              <div class="truncate text-xs font-medium">{{ conv.title || t('chat.new_conv') }}</div>
               <div class="text-[10px] text-muted-foreground">{{ formatTime(conv.updated_at) }}</div>
             </template>
           </div>
           <div v-if="editingId !== conv.id" class="hidden gap-0.5 group-hover:flex">
             <button
               class="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
-              title="重命名"
+              :title="t('chat.rename')"
               @click.stop="startEdit(conv.id, conv.title)"
             >
               <Pencil class="size-3" />
             </button>
             <button
               class="rounded p-0.5 text-muted-foreground hover:bg-background hover:text-red-500"
-              title="删除"
+              :title="t('chat.delete')"
               @click.stop="onDelete(conv.id)"
             >
               <Trash2 class="size-3" />
@@ -289,7 +291,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           v-if="!chat.conversations.length"
           class="px-3 py-4 text-center text-[11px] text-muted-foreground"
         >
-          暂无历史对话
+          {{ t('chat.no_history') }}
         </div>
       </div>
 
@@ -298,7 +300,7 @@ const canSend = computed(() => !chat.loading && input.value.trim().length > 0);
           v-if="!chat.hasMessages"
           class="flex h-full items-center justify-center text-xs text-muted-foreground"
         >
-          输入问题开始对话
+          {{ t('chat.start_hint') }}
         </div>
         <div v-else class="space-y-3">
           <div

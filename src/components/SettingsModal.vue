@@ -166,7 +166,6 @@ const shortcuts = [
 
 <template>
   <Teleport to="body">
-    <Transition name="modal">
       <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
         <div
           ref="root"
@@ -501,7 +500,6 @@ const shortcuts = [
           </div>
         </div>
       </div>
-    </Transition>
   </Teleport>
 </template>
 

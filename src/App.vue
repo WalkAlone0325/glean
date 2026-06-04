@@ -22,7 +22,7 @@ const app = useAppStore();
 const search = useSearchStore();
 const files = useFilesStore();
 const tags = useTagsStore();
-const { locale: i18nLocale } = useI18n();
+const { locale: i18nLocale, t } = useI18n();
 const chat = useChatStore();
 const indexing = ref(false);
 const paused = ref(false);
@@ -60,20 +60,20 @@ const embeddingPct = computed(() => {
   return Math.min(100, Math.round((p.embedded / p.total) * 100));
 });
 
-const kindOptions: { value: string | null; label: string }[] = [
-  { value: null, label: "全部" },
-  { value: "pdf", label: "PDF" },
-  { value: "markdown", label: "Markdown" },
-  { value: "text", label: "文本" },
-  { value: "code", label: "代码" },
-  { value: "image", label: "图片" },
-  { value: "document", label: "文档" },
-  { value: "spreadsheet", label: "表格" },
-  { value: "archive", label: "压缩包" },
-];
+const kindOptions = computed(() => [
+  { value: null, label: t('kind.all') },
+  { value: "pdf", label: t('kind.pdf') },
+  { value: "markdown", label: t('kind.markdown') },
+  { value: "text", label: t('kind.text') },
+  { value: "code", label: t('kind.code') },
+  { value: "image", label: t('kind.image') },
+  { value: "document", label: t('kind.document') },
+  { value: "spreadsheet", label: t('kind.spreadsheet') },
+  { value: "archive", label: t('kind.archive') },
+]);
 
 const currentKindLabel = computed(() => {
-  return kindOptions.find((o) => o.value === files.kindFilter)?.label || "全部";
+  return kindOptions.value.find((o) => o.value === files.kindFilter)?.label || t('kind.all');
 });
 
 onMounted(async () => {
@@ -126,20 +126,20 @@ watch(() => app.locale, (loc) => {
           @click="search.paletteOpen = true"
         >
           <Search class="size-4" />
-          <span class="flex-1">搜索文件、内容、命令...</span>
+          <span class="flex-1">{{ t('header.search_placeholder') }}</span>
           <kbd class="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tracking-wider">⌘K</kbd>
         </button>
         <button
           class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-          aria-label="AI 助手"
-          title="AI 助手"
+          :aria-label="t('header.ai_assistant')"
+          :title="t('header.ai_assistant')"
           @click="chat.togglePanel()"
         >
           <MessageSquare class="size-4" />
         </button>
         <button
           class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-          aria-label="设置"
+          :aria-label="t('header.settings')"
           @click="showSettings = true"
         >
           <Settings class="size-4" />
@@ -151,21 +151,21 @@ watch(() => app.locale, (loc) => {
           <nav class="space-y-0.5 p-2 pb-3 text-sm">
             <a class="flex items-center gap-2 rounded-lg bg-primary/10 px-2.5 py-1.5 font-medium text-primary">
               <Folder class="size-4" />
-              所有文件
+              {{ t('sidebar.all_files') }}
               <span class="ml-auto text-xs tabular-nums text-primary/70">{{ app.stats.files }}</span>
             </a>
             <a class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
               <FileText class="size-4" />
-              最近查看
+              {{ t('sidebar.recent') }}
             </a>
           </nav>
           <div class="mx-3 border-t border-border" />
           <div class="flex-1 overflow-auto p-2 pt-3">
             <div class="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-              已索引文件夹
+              {{ t('sidebar.indexed_folders') }}
             </div>
             <div v-if="!app.indexedFolders?.length" class="px-2 text-xs text-muted-foreground">
-              尚未索引任何文件夹
+              {{ t('sidebar.no_folders') }}
             </div>
             <ul v-else class="space-y-0.5 text-xs">
               <li
@@ -190,8 +190,8 @@ watch(() => app.locale, (loc) => {
               <Search class="size-10 text-muted-foreground/40" />
             </div>
             <div class="text-center">
-              <p class="text-sm font-medium">还没有索引任何文件夹</p>
-              <p class="mt-1 text-xs opacity-60">添加文件夹后即可开始搜索和浏览文件</p>
+              <p class="text-sm font-medium">{{ t('empty_state.title') }}</p>
+              <p class="mt-1 text-xs opacity-60">{{ t('empty_state.subtitle') }}</p>
             </div>
             <button
               :disabled="indexing"
@@ -199,7 +199,7 @@ watch(() => app.locale, (loc) => {
               @click="pickAndIndex"
             >
               <FolderOpen class="size-4" />
-              选择文件夹开始索引
+              {{ t('empty_state.button') }}
             </button>
           </div>
         <template v-else>
@@ -208,7 +208,7 @@ watch(() => app.locale, (loc) => {
               <Search class="size-3.5 text-muted-foreground/60" />
               <input
                 :value="files.nameFilter"
-                placeholder="过滤当前列表..."
+                :placeholder="t('toolbar.filter_placeholder')"
                 class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
                 @input="files.setNameFilter(($event.target as HTMLInputElement).value)"
               />
@@ -246,19 +246,19 @@ watch(() => app.locale, (loc) => {
               <button
                 v-if="indexing"
                 class="flex items-center gap-1 rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:bg-muted/50"
-                :title="paused ? '恢复索引' : '暂停索引'"
+                :title="paused ? t('toolbar.resume') : t('toolbar.pause')"
                 @click="togglePause"
               >
                 <Play v-if="paused" class="size-3" />
                 <Pause v-else class="size-3" />
-                {{ paused ? "继续" : "暂停" }}
+                {{ paused ? t('toolbar.resume') : t('toolbar.pause') }}
               </button>
               <div
                 v-if="app.embedding.phase === 'Downloading'"
                 class="group relative flex items-center gap-1.5 rounded-lg bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400"
               >
                 <Loader2 class="size-3 animate-spin" />
-                下载模型
+                {{ t('toolbar.downloading_model') }}
                 <div
                   class="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden w-64 rounded-lg border border-border bg-background p-3 text-xs text-foreground shadow-lg group-hover:block"
                 >
@@ -282,23 +282,23 @@ watch(() => app.locale, (loc) => {
                 :title="`已向量化 ${app.embedding.embedded} / ${app.embedding.total} chunk`"
               >
                 <Sparkles class="size-3 animate-pulse" />
-                向量化 {{ embeddingPct }}%
+                {{ t('toolbar.embedding_pct', { pct: embeddingPct }) }}
               </div>
               <div
                 v-else-if="app.embedding.phase === 'Completed'"
                 class="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
-                :title="`共 ${app.stats.chunks} chunks 已向量化`"
+                :title="t('toolbar.embedding_ready')"
               >
                 <Sparkles class="size-3" />
-                向量就绪
+                {{ t('toolbar.embedding_ready') }}
               </div>
               <div
                 v-else-if="app.embedding.phase === 'Failed'"
                 class="flex items-center gap-1.5 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-[11px] font-medium text-red-600 dark:text-red-400"
-                title="向量化失败，请查看日志"
+                :title="t('toolbar.embedding_failed')"
               >
                 <Sparkles class="size-3" />
-                向量化失败
+                {{ t('toolbar.embedding_failed') }}
               </div>
               <div class="mx-1 h-5 w-px bg-border" />
               <button
@@ -307,7 +307,7 @@ watch(() => app.locale, (loc) => {
               >
                 <Loader2 v-if="indexing && !paused" class="size-3 animate-spin" />
                 <FolderOpen v-else class="size-3" />
-                添加
+                {{ t('toolbar.add_folder') }}
               </button>
             </div>
           </div>

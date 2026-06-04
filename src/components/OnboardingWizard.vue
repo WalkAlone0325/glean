@@ -89,7 +89,7 @@ function onSkip() {
             <span class="flex-1 font-mono">{{ f }}</span>
             <button
               class="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-red-500"
-              @click="onRemoveFolder(f)" aria-label="移除"
+              aria-label="移除" @click="onRemoveFolder(f)"
             >
               ✕
             </button>

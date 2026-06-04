@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useVirtualizer } from "@tanstack/vue-virtual";
 import { invoke } from "@tauri-apps/api/core";
 import { useFilesStore, type FileEntry } from "../stores/files";
@@ -8,6 +9,7 @@ import { Loader2, ExternalLink, FolderOpen, Copy, Search, Star } from "@lucide/v
 import { kindIcon, formatSize, formatDate } from "../utils/fileKind";
 import ContextMenu from "./ContextMenu.vue";
 
+const { t } = useI18n();
 const store = useFilesStore();
 const toast = useToastStore();
 const containerRef = useTemplateRef<HTMLDivElement>("containerRef");
@@ -99,7 +101,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         ]"
         @click="store.setViewMode('all')"
       >
-        全部文件
+        {{ t('filelist.all') }}
       </button>
       <button
         :class="[
@@ -110,7 +112,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         ]"
         @click="store.toggleRecent()"
       >
-        最近查看
+        {{ t('filelist.recent') }}
       </button>
       <button
         :class="[
@@ -121,7 +123,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         ]"
         @click="store.toggleFavorites()"
       >
-        星标文件
+        {{ t('filelist.favorites') }}
       </button>
     </div>
     <div
@@ -131,7 +133,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         class="flex items-center gap-1 text-left transition-colors hover:text-foreground"
         @click="store.toggleSort('name')"
       >
-        名称
+        {{ t('filelist.name') }}
         <span v-if="store.sortKey === 'name'" class="text-foreground">
           {{ store.sortDir === "asc" ? "↑" : "↓" }}
         </span>
@@ -140,7 +142,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         class="flex items-center gap-1 transition-colors hover:text-foreground"
         @click="store.toggleSort('ext')"
       >
-        类型
+        {{ t('filelist.type') }}
         <span v-if="store.sortKey === 'ext'" class="text-foreground">
           {{ store.sortDir === "asc" ? "↑" : "↓" }}
         </span>
@@ -149,7 +151,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         class="flex items-center gap-1 transition-colors hover:text-foreground"
         @click="store.toggleSort('size')"
       >
-        大小
+        {{ t('filelist.size') }}
         <span v-if="store.sortKey === 'size'" class="text-foreground">
           {{ store.sortDir === "asc" ? "↑" : "↓" }}
         </span>
@@ -158,7 +160,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         class="flex items-center gap-1 transition-colors hover:text-foreground"
         @click="store.toggleSort('mtime')"
       >
-        修改时间
+        {{ t('filelist.mtime') }}
         <span v-if="store.sortKey === 'mtime'" class="text-foreground">
           {{ store.sortDir === "asc" ? "↑" : "↓" }}
         </span>
@@ -171,7 +173,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         class="flex flex-col items-center justify-center gap-2 py-12 text-muted-foreground"
       >
         <Loader2 class="size-5 animate-spin" />
-        <span class="text-xs">加载中...</span>
+        <span class="text-xs">{{ t('filelist.preview_loading') }}</span>
       </div>
       <div v-else-if="store.error" class="px-3 py-6 text-sm text-red-500">
         {{ store.error }}
@@ -182,9 +184,9 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       >
         <Search v-if="store.nameFilter" class="size-6 opacity-50" />
         <span class="text-sm">
-          {{ store.showFavorites ? "暂无星标文件" : store.showRecent ? "暂无最近查看的文件" : store.nameFilter ? `没有匹配 "${store.nameFilter}" 的文件` : "暂无文件" }}
+          {{ store.showFavorites ? t('filelist.empty_favorites') : store.showRecent ? t('filelist.empty_recent') : store.nameFilter ? t('filelist.empty_filter', { query: store.nameFilter }) : t('filelist.empty_all') }}
         </span>
-        <span v-if="store.nameFilter" class="text-xs">试试清空过滤词或更换关键词</span>
+        <span v-if="store.nameFilter" class="text-xs">{{ t('filelist.empty_filter_hint') }}</span>
       </div>
       <div
         v-else
@@ -237,7 +239,7 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
               >
               <button
                 class="shrink-0 rounded p-0.5 hover:bg-muted/60"
-                :title="store.favoriteIds.has(store.filtered[vi.index]!.id) ? '取消星标' : '添加星标'"
+                :title="store.favoriteIds.has(store.filtered[vi.index]!.id) ? t('filelist.rm_fav') : t('filelist.add_fav')"
                 @click.stop="doToggleFavorite(store.filtered[vi.index]!.id)"
               >
                 <Star
@@ -267,20 +269,18 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
       class="flex items-center gap-2 border-t border-border bg-muted/10 px-3 py-1.5 text-[10px] text-muted-foreground/70"
     >
       <template v-if="store.showFavorites">
-        <span>{{ store.filtered.length }} 个星标文件</span>
+        <span>{{ store.filtered.length }} {{ t('filelist.selected_favorites') }}</span>
       </template>
       <template v-else-if="store.showRecent">
-        <span>{{ store.filtered.length }} 个最近查看</span>
+        <span>{{ store.filtered.length }} {{ t('filelist.selected_recent') }}</span>
       </template>
       <template v-else-if="store.nameFilter">
-        <span>过滤 {{ store.filtered.length }}/{{ store.items.length }}</span>
+        <span>{{ t('filelist.selected_filter', { count: store.filtered.length, total: store.items.length }) }}</span>
       </template>
       <template v-else>
-        <span>共 {{ store.items.length }} 个文件</span>
+        <span>{{ t('filelist.status_total', { count: store.items.length }) }}</span>
         <span class="text-muted-foreground/40">·</span>
-        <span>双击打开</span>
-        <span class="text-muted-foreground/40">·</span>
-        <span>右键更多操作</span>
+        <span>{{ t('filelist.status_hint') }}</span>
       </template>
     </div>
 
@@ -295,21 +295,21 @@ watch(() => store.filtered, () => virtualizer.value.scrollToIndex(0), { flush: "
         @click="ctxAction('open')"
       >
         <ExternalLink class="size-3.5" />
-        打开
+        {{ t('filelist.open') }}
       </button>
       <button
         class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-muted"
         @click="ctxAction('finder')"
       >
         <FolderOpen class="size-3.5" />
-        在 Finder 中显示
+        {{ t('filelist.reveal') }}
       </button>
       <button
         class="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-muted"
         @click="ctxAction('copy')"
       >
         <Copy class="size-3.5" />
-        复制路径
+        {{ t('filelist.copy_path') }}
       </button>
     </ContextMenu>
   </div>

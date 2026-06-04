@@ -61,8 +61,6 @@ export const useAppStore = defineStore(
       embedding.value = p;
     }
 
-    let mq: MediaQueryList | null = null;
-
     function applyTheme(t: "light" | "dark" | "system") {
       theme.value = t;
       const html = document.documentElement;
@@ -76,7 +74,7 @@ export const useAppStore = defineStore(
     }
 
     if (typeof window !== "undefined") {
-      mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
       mq.addEventListener("change", (e) => {
         if (theme.value === "system") {
           const html = document.documentElement;
