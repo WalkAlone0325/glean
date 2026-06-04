@@ -39,3 +39,5 @@ features:
     title: 中英双语
     details: 完整国际化支持，跟随系统语言或手动切换。
 ---
+
+<!-- trigger first deploy -->
